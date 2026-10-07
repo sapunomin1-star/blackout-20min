@@ -26,11 +26,12 @@
 - **公開與否由使用者決定**：不要自行把 repo 改成 public，也不要自行開 Pages。免費方案的 Pages 需要 public repo。
 
 ## 驗證
-這兩個指令在 `docs/PLAN.md` 階段 6 才會建立；建立前，以 PLAN 各階段寫的驗證方法為準。
+兩個指令都已建立（2026-10-07）。還沒有 `js/secrets.js` 時，check 會提醒並略過真資料的窮舉與明文掃描，e2e 改用隨機假判定資料測流程。
 
 ```bash
 npm run check   # 只用 node：內容隔離、明文答案掃描、判定窮舉、外部資源掃描
-npm run e2e     # playwright-core 真點擊：手機直式跑四頁與五種指控結果、檢查無水平捲動；截圖在 output/（gitignored）
+npm run e2e     # playwright-core 真點擊：手機直式跑四頁與五種指控結果、檢查無水平捲動；截圖在 output/e2e/（gitignored）
+npm run build:secrets   # tools/secrets.local.json → js/secrets.js，並窮舉驗證
 ```
 
 - e2e 只能用真的點擊與鍵盤操作；可以讀頁面狀態，但不能用 JS 代替玩家操作。
