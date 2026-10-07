@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#15110d">
+  <meta name="robots" content="noindex">
+  <title>偵訊紀錄｜停電的二十分鐘</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%8D%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&amp;display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&amp;display=swap"></noscript>
+  <link rel="stylesheet" href="css/style.css">
+  <script>document.documentElement.classList.add('js');</script>
+</head>
+<body class="page-interrogation">
+  <header class="topbar">
+    <a class="topbar-back" href="index.html">← 首頁</a>
+    <p class="topbar-role">偵訊官</p>
+    <p class="topbar-progress" aria-live="polite">已追問 <strong id="asked-count">0</strong>/<span id="suspect-total">4</span></p>
+  </header>
+
+  <main class="page">
+    <p class="privacy-note">這是偵訊官的畫面，別讓現場調查員看到。把口供念給對方聽。</p>
+
+    <div class="page-head">
+      <p class="kicker">偵訊紀錄</p>
+      <h1 class="page-title">四位嫌疑人的口供</h1>
+      <p class="lead">先念口供；想知道更多，就按「追問」，看對方怎麼回答、有什麼反應。</p>
+    </div>
+
+    <nav class="suspect-nav" aria-label="嫌疑人">
+      <a href="#suspect-chen" data-suspect="chen">陳先生</a>
+      <a href="#suspect-lin" data-suspect="lin">老林</a>
+      <a href="#suspect-zhe" data-suspect="zhe">阿哲</a>
+      <a href="#suspect-su" data-suspect="su">蘇小姐</a>
+    </nav>
+
+    <div class="suspects">
+      <article class="paper suspect" id="suspect-chen" data-suspect="chen" aria-labelledby="name-chen">
+        <header class="suspect-head">
+          <span class="monogram" aria-hidden="true">陳</span>
+          <div class="suspect-who">
+            <p class="suspect-role">屋主</p>
+            <h2 class="suspect-name" id="name-chen">陳先生</h2>
+          </div>
+          <span class="seen-mark">已追問</span>
+        </header>
+        <p class="label">口供</p>
+        <blockquote class="testimony">「停電的時候我跟老林一起下地下室弄電箱。他還問我哪個是總開關，我說貼著『總』字的那個。九點二十分電來了，我回書房就發現懷錶不見了。」</blockquote>
+        <details class="follow-up">
+          <summary><span class="btn btn-ghost">追問<span class="chevron" aria-hidden="true"></span></span></summary>
+          <div class="follow-up-body">
+            <p class="label">追問</p>
+            <p class="question">「最後一次看到懷錶是什麼時候？」</p>
+            <p class="label">回答</p>
+            <blockquote class="answer">「八點五十分，我拿出來給蘇小姐看過，之後放回抽屜。」</blockquote>
+          </div>
+        </details>
+      </article>
+
+      <article class="paper suspect" id="suspect-lin" data-suspect="lin" aria-labelledby="name-lin">
+        <header class="suspect-head">
+          <span class="monogram" aria-hidden="true">林</span>
+          <div class="suspect-who">
+            <p class="suspect-role">管家</p>
+            <h2 class="suspect-name" id="name-lin">老林</h2>
+          </div>
+          <span class="seen-mark">已追問</span>
+        </header>
+        <p class="label">口供</p>
+        <blockquote class="testimony">「一跳電，我先把餐桌上那三根紅蠟燭點起來，讓客人有點亮光，然後就跟老爺下地下室了。」</blockquote>
+        <details class="follow-up">
+          <summary><span class="btn btn-ghost">追問<span class="chevron" aria-hidden="true"></span></span></summary>
+          <div class="follow-up-body">
+            <p class="label">追問</p>
+            <p class="question">「今晚你有進過酒窖嗎？」</p>
+            <p class="label">回答</p>
+            <blockquote class="answer">「沒、沒有。」</blockquote>
+            <p class="label">觀察反應</p>
+            <p class="reaction">他的視線飄向一旁，伸手摸了摸嘴角，很快把話題轉回電箱。</p>
+          </div>
+        </details>
+      </article>
+
+      <article class="paper suspect" id="suspect-zhe" data-suspect="zhe" aria-labelledby="name-zhe">
+        <header class="suspect-head">
+          <span class="monogram" aria-hidden="true">哲</span>
+          <div class="suspect-who">
+            <p class="suspect-role">外甥</p>
+            <h2 class="suspect-name" id="name-zhe">阿哲</h2>
+          </div>
+          <span class="seen-mark">已追問</span>
+        </header>
+        <p class="label">口供</p>
+        <blockquote class="testimony">「停電那段時間我都在陽台講電話，雨超大，我整個人都淋濕了。」</blockquote>
+        <details class="follow-up">
+          <summary><span class="btn btn-ghost">追問<span class="chevron" aria-hidden="true"></span></span></summary>
+          <div class="follow-up-body">
+            <p class="label">追問</p>
+            <p class="question">「在跟誰講電話？」</p>
+            <p class="label">回答</p>
+            <blockquote class="answer">「……一個朋友，借錢的事。舅舅不會借我的，你們一定覺得是我。」</blockquote>
+            <p class="label">觀察反應</p>
+            <p class="reaction">語氣煩躁，但回答很快，沒有停頓。</p>
+          </div>
+        </details>
+      </article>
+
+      <article class="paper suspect" id="suspect-su" data-suspect="su" aria-labelledby="name-su">
+        <header class="suspect-head">
+          <span class="monogram" aria-hidden="true">蘇</span>
+          <div class="suspect-who">
+            <p class="suspect-role">藝術品商人</p>
+            <h2 class="suspect-name" id="name-su">蘇小姐</h2>
+          </div>
+          <span class="seen-mark">已追問</span>
+        </header>
+        <p class="label">口供</p>
+        <blockquote class="testimony">「那二十分鐘我一步都沒離開過餐桌。整個飯廳一片漆黑，什麼都看不見，我嚇死了。」</blockquote>
+        <details class="follow-up">
+          <summary><span class="btn btn-ghost">追問<span class="chevron" aria-hidden="true"></span></span></summary>
+          <div class="follow-up-body">
+            <p class="label">追問</p>
+            <p class="question">「妳對那只懷錶有興趣嗎？」</p>
+            <p class="label">回答</p>
+            <blockquote class="answer">「我是來談生意的，當然有興趣，但我出得起價錢，何必偷？」</blockquote>
+            <p class="label">觀察反應</p>
+            <p class="reaction">她回答得非常流暢，像是事先想好的；說到「一片漆黑」時手指輕敲了一下桌面。</p>
+          </div>
+        </details>
+      </article>
+    </div>
+
+    <footer class="page-footer">
+      <p>問完了？回首頁，和現場調查員一起「提出指控」。</p>
+      <div class="footer-actions">
+        <a class="btn btn-ghost" href="index.html">回首頁</a>
+        <button class="link-button" type="button" id="reset-marks">清除追問紀錄</button>
+      </div>
+    </footer>
+  </main>
+
+  <script src="js/common.js"></script>
+  <script src="js/interrogation.js"></script>
+</body>
+</html>

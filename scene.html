@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#15110d">
+  <meta name="robots" content="noindex">
+  <title>現場調查｜停電的二十分鐘</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%8D%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&amp;display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&amp;display=swap"></noscript>
+  <link rel="stylesheet" href="css/style.css">
+  <script>document.documentElement.classList.add('js');</script>
+</head>
+<body class="page-scene">
+  <header class="topbar">
+    <a class="topbar-back" href="index.html">← 首頁</a>
+    <p class="topbar-role">現場調查員</p>
+    <p class="topbar-progress" aria-live="polite">已查看 <strong id="seen-count">0</strong>/<span id="item-total">10</span></p>
+  </header>
+
+  <main class="page">
+    <p class="privacy-note">這是現場調查員的畫面，別讓偵訊官看到。把你看到的東西說給對方聽。</p>
+
+    <div class="page-head">
+      <p class="kicker">現場調查</p>
+      <h1 class="page-title">宅邸裡的物品</h1>
+      <p class="lead">點平面圖上的房間或下方分頁切換房間，點物品看細節。</p>
+    </div>
+
+    <figure class="paper floorplan">
+      <svg viewBox="0 0 320 330" role="img" aria-labelledby="fp-title">
+        <title id="fp-title">宅邸平面示意圖</title>
+        <defs>
+          <pattern id="fp-rain" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(18)">
+            <line x1="1" y1="0" x2="1" y2="4" stroke="currentColor" stroke-width="1" opacity=".35"/>
+          </pattern>
+          <pattern id="fp-steps" width="10" height="9" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="0.5" x2="10" y2="0.5" stroke="currentColor" stroke-width="1" opacity=".35"/>
+          </pattern>
+        </defs>
+
+        <g class="fp-room" data-room="study">
+          <rect class="fp-fill" x="12" y="12" width="118" height="92"/>
+          <text class="fp-name" x="71" y="52">書房</text>
+          <text class="fp-count" x="71" y="74" data-count-for="study"></text>
+        </g>
+        <g class="fp-room" data-room="basement">
+          <rect class="fp-fill" x="12" y="104" width="118" height="68"/>
+          <rect class="fp-hatch" x="14" y="106" width="114" height="64" fill="url(#fp-steps)"/>
+          <text class="fp-name" x="71" y="132">樓梯</text>
+          <text class="fp-count" x="71" y="154">往地下室</text>
+        </g>
+        <g class="fp-room" data-room="hallway">
+          <rect class="fp-fill" x="130" y="12" width="60" height="160"/>
+          <text class="fp-name" x="160" y="76">走</text>
+          <text class="fp-name" x="160" y="98">廊</text>
+          <text class="fp-count" x="160" y="122" data-count-for="hallway"></text>
+        </g>
+        <g class="fp-room" data-room="dining">
+          <rect class="fp-fill" x="190" y="12" width="118" height="160"/>
+          <text class="fp-name" x="249" y="84">飯廳</text>
+          <text class="fp-count" x="249" y="106" data-count-for="dining"></text>
+        </g>
+        <g class="fp-room" data-room="balcony">
+          <rect class="fp-fill" x="118" y="172" width="84" height="48" stroke-dasharray="5 3"/>
+          <rect class="fp-hatch" x="120" y="174" width="80" height="44" fill="url(#fp-rain)"/>
+          <text class="fp-name" x="160" y="192">陽台</text>
+          <text class="fp-count" x="160" y="211" data-count-for="balcony"></text>
+        </g>
+
+        <path class="fp-link" d="M71 172 V258"/>
+        <text class="fp-level" x="80" y="246">樓下</text>
+        <g class="fp-room" data-room="basement">
+          <rect class="fp-fill" x="12" y="258" width="296" height="60"/>
+          <text class="fp-name" x="160" y="282">地下室</text>
+          <text class="fp-count" x="160" y="303" data-count-for="basement"></text>
+        </g>
+      </svg>
+      <figcaption>宅邸平面示意圖（點房間查看）</figcaption>
+    </figure>
+
+    <div class="room-tabs" role="tablist" aria-label="房間">
+      <button class="room-tab" type="button" role="tab" id="tab-dining" aria-controls="room-dining" data-room="dining">飯廳<span class="tab-count"></span></button>
+      <button class="room-tab" type="button" role="tab" id="tab-study" aria-controls="room-study" data-room="study">書房<span class="tab-count"></span></button>
+      <button class="room-tab" type="button" role="tab" id="tab-balcony" aria-controls="room-balcony" data-room="balcony">陽台<span class="tab-count"></span></button>
+      <button class="room-tab" type="button" role="tab" id="tab-basement" aria-controls="room-basement" data-room="basement">地下室<span class="tab-count"></span></button>
+      <button class="room-tab" type="button" role="tab" id="tab-hallway" aria-controls="room-hallway" data-room="hallway">走廊<span class="tab-count"></span></button>
+    </div>
+
+    <section class="room" id="room-dining" data-room="dining" role="tabpanel" aria-labelledby="tab-dining">
+      <h2 class="room-title"><span class="label">房間</span>飯廳</h2>
+      <div class="items">
+        <details class="item paper" data-item="candelabra">
+          <summary><span class="item-head"><span class="item-icon" aria-hidden="true">🕯️</span><span class="item-name">燭台</span><span class="seen-mark">已查看</span><span class="chevron" aria-hidden="true"></span></span></summary>
+          <div class="item-body">
+            <p class="item-desc">三叉銀燭台，三個燭座裡只插著兩根紅蠟燭，第三個燭座是空的，座緣有新鮮的紅色蠟滴。</p>
+          </div>
+        </details>
+        <details class="item paper" data-item="table">
+          <summary><span class="item-head"><span class="item-icon" aria-hidden="true">🍽️</span><span class="item-name">餐桌</span><span class="seen-mark">已查看</span><span class="chevron" aria-hidden="true"></span></span></summary>
+          <div class="item-body">
+            <p class="item-desc">甜點吃到一半，四個座位，椅子都拉開著。</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section class="room" id="room-study" data-room="study" role="tabpanel" aria-labelledby="tab-study">
+      <h2 class="room-title"><span class="label">房間</span>書房</h2>
+      <div class="items">
+        <details class="item paper" data-item="desk">
+          <summary><span class="item-head"><span class="item-icon" aria-hidden="true">🗃️</span><span class="item-name">書桌</span><span class="seen-mark">已查看</span><span class="chevron" aria-hidden="true"></span></span></summary>
+          <div class="item-body">
+            <p class="item-desc">抽屜半開，懷錶的絨布盒是空的。抽屜旁的桌面上有一滴已凝固的紅色蠟。</p>
+          </div>
+        </details>
+        <details class="item paper" data-item="floor">
+          <summary><span class="item-head"><span class="item-icon" aria-hidden="true">🪵</span><span class="item-name">地板</span><span class="seen-mark">已查看</span><span class="chevron" aria-hidden="true"></span></span></summary>
+          <div class="item-body">
+            <p class="item-desc">木地板乾燥，沒有任何水漬或腳印。</p>
+          </div>
+        </details>
+        <details class="item paper" data-item="window">
+          <summary><span class="item-head"><span class="item-icon" aria-hidden="true">🪟</span><span class="item-name">窗戶</span><span class="seen-mark">已查看</span><span class="chevron" aria-hidden="true"></span></span></summary>
+          <div class="item-body">
+            <p class="item-desc">從內側扣上鎖，窗框乾燥。</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section class="room" id="room-balcony" data-room="balcony" role="tabpanel" aria-labelledby="tab-balcony">
+      <h2 class="room-title"><span class="label">房間</span>陽台</h2>
+      <div class="items">
+        <details class="item paper" data-item="ashtray">
+          <summary><span class="item-head"><span class="item-icon" aria-hidden="true">🚬</span><span class="item-name">菸灰缸</span><span class="seen-mark">已查看</span><span class="chevron" aria-hidden="true"></span></span></summary>
+          <div class="item-body">
+            <p class="item-desc">裡面有三根被雨打濕的菸蒂。</p>
+          </div>
+        </details>
+        <details class="item paper" data-item="ground">
+          <summary><span class="item-head"><span class="item-icon" aria-hidden="true">🌧️</span><span class="item-name">地面</span><span class="seen-mark">已查看</span><span class="chevron" aria-hidden="true"></span></span></summary>
+          <div class="item-body">
+            <p class="item-desc">積水很深，雨從遮簷外打進來。</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section class="room" id="room-basement" data-room="basement" role="tabpanel" aria-labelledby="tab-basement">
+      <h2 class="room-title"><span class="label">房間</span>地下室</h2>
+      <div class="items">
+        <details class="item paper" data-item="fusebox">
+          <summary><span class="item-head"><span class="item-icon" aria-hidden="true">⚡</span><span class="item-name">電箱</span><span class="seen-mark">已查看</span><span class="chevron" aria-hidden="true"></span></span></summary>
+          <div class="item-body">
+            <p class="item-desc">總開關上貼著手寫標籤「總」，旁邊放著一支手電筒。</p>
+          </div>
+        </details>
+        <details class="item paper" data-item="cellar">
+          <summary><span class="item-head"><span class="item-icon" aria-hidden="true">🍷</span><span class="item-name">酒窖</span><span class="seen-mark">已查看</span><span class="chevron" aria-hidden="true"></span></span></summary>
+          <div class="item-body">
+            <p class="item-desc">一瓶開過的紅酒，旁邊一個用過的杯子，杯底還有一點酒。</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section class="room" id="room-hallway" data-room="hallway" role="tabpanel" aria-labelledby="tab-hallway">
+      <h2 class="room-title"><span class="label">房間</span>走廊</h2>
+      <div class="items">
+        <details class="item paper" data-item="plant">
+          <summary><span class="item-head"><span class="item-icon" aria-hidden="true">🪴</span><span class="item-name">盆栽</span><span class="seen-mark">已查看</span><span class="chevron" aria-hidden="true"></span></span></summary>
+          <div class="item-body">
+            <p class="item-desc">土的表面有被翻動過的痕跡。</p>
+            <details class="dig">
+              <summary><span class="dig-button">翻開泥土</span></summary>
+              <p class="item-desc dig-result">土裡埋著一截燒短的紅蠟燭。</p>
+            </details>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <footer class="page-footer">
+      <p>查完了？回首頁，和偵訊官一起「提出指控」。</p>
+      <div class="footer-actions">
+        <a class="btn btn-ghost" href="index.html">回首頁</a>
+        <button class="link-button" type="button" id="reset-marks">清除查看紀錄</button>
+      </div>
+    </footer>
+  </main>
+
+  <script src="js/common.js"></script>
+  <script src="js/scene.js"></script>
+</body>
+</html>
