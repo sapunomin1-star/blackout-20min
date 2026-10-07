@@ -1,0 +1,7 @@
+.DS_Store
+node_modules/
+output/
+
+# 機密原文（答案、判定訊息、真相）：只能放在本機或 session 內，絕不進 git
+tools/secrets.local.json
+*.local.json

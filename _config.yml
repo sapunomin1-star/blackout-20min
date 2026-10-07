@@ -1,0 +1,15 @@
+# GitHub Pages（Jekyll）設定：只發布遊戲本體。
+# HTML、CSS、JS 不加 YAML front matter，Jekyll 就原樣複製。
+# 不要加 .nojekyll，加了這份 exclude 就失效，docs/ 會被一起發布。
+# 新增不該發布的檔案或資料夾時，補進下面的清單。
+exclude:
+  - docs
+  - tools
+  - tests
+  - scripts
+  - output
+  - node_modules
+  - package.json
+  - package-lock.json
+  - README.md
+  - CLAUDE.md
