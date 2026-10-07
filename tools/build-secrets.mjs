@@ -23,7 +23,7 @@ if (args.includes('--ids')) {
   for (const s of options.suspects) console.log(`  ${s.id.padEnd(10)} ${s.name}（${s.role}）`);
   console.log('\n現場物品（acceptedEvidence）');
   for (const i of options.items) console.log(`  ${i.id.padEnd(10)} ${i.group}・${i.text}`);
-  console.log('\n口供句（flaw）');
+  console.log('\n口供句（flaws，可以填多句）');
   for (const s of options.statements) console.log(`  ${s.id.padEnd(10)} ${s.text}`);
   console.log('\n也可以直接填名字或句子原文，工具會自動對到 ID。');
   process.exit(0);
@@ -53,7 +53,7 @@ writeFileSync(output, js);
 // 立刻用 js/verdict.js 窮舉一次，確認解出來的東西和原文逐字相同
 const result = await enumerate(loadVerdict(ROOT, js), options);
 const diffs = compareWithInput(result.answer, norm);
-console.log(`已產生 ${path.relative(ROOT, output)}：${options.suspects.length} 筆嫌疑人密文、${result.solvedCount} 組全對雜湊、1 筆真相密文。`);
+console.log(`已產生 ${path.relative(ROOT, output)}：${options.suspects.length} 筆嫌疑人密文、${result.solvedCount} 組全對雜湊、${result.flawCount} 份真相密文。`);
 console.log(`窮舉 ${result.total} 種組合。`);
 if (result.problems.length || diffs.length) {
   for (const p of result.problems) console.error('✗ ' + p);

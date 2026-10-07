@@ -213,13 +213,14 @@ export async function runChecks(root, { useGit = true } = {}) {
   const secretsPath = path.join(root, 'js', 'secrets.js');
   const localPath = path.join(root, 'tools', 'secrets.local.json');
   const options = accuseOptions(root);
-  {
+  // 假資料：可接受的破綻一句、兩句各測一次
+  for (const flawCount of [1, 2]) {
     const cat = '判定窮舉';
-    const synth = await buildSynthetic(root);
+    const synth = await buildSynthetic(root, { flawCount });
     const r = await enumerate(loadVerdict(root, synth.js), options);
     const diffs = compareWithInput(r.answer, synth.norm);
-    if (r.problems.length || diffs.length) fail(cat, `假資料測試失敗：${[...r.problems, ...diffs].join('；')}`);
-    else pass(cat, `隨機假資料：窮舉 ${r.total} 種組合，只有一人走兇手路徑、${r.solvedCount} 組全對且破綻同一句，其他人都回自己的訊息，解密結果逐字相同`);
+    if (r.problems.length || diffs.length) fail(cat, `假資料（破綻 ${flawCount} 句）測試失敗：${[...r.problems, ...diffs].join('；')}`);
+    else pass(cat, `隨機假資料（破綻 ${flawCount} 句）：窮舉 ${r.total} 種組合，只有一人走兇手路徑、${r.solvedCount} 組全對（${r.evidenceCount} 件證據 × ${r.flawCount} 句破綻），其他人都回自己的訊息，解密結果逐字相同`);
   }
 
   let secretTexts = null;
@@ -241,7 +242,7 @@ export async function runChecks(root, { useGit = true } = {}) {
 
       const r = await enumerate(runner, options);
       if (r.problems.length) fail(cat, `真資料：${r.problems.join('；')}`);
-      else pass(cat, `真資料：窮舉 ${r.total} 種組合，剛好一人走兇手路徑、${r.solvedCount} 組全對而且破綻是同一句，其他三人都回自己的訊息`);
+      else pass(cat, `真資料：窮舉 ${r.total} 種組合，剛好一人走兇手路徑、${r.solvedCount} 組全對（${r.evidenceCount} 件證據 × ${r.flawCount} 句破綻的完整組合），其他三人都回自己的訊息`);
       secretTexts = [...Object.values(r.answer.messages), r.answer.truth].filter(Boolean);
 
       if (existsSync(localPath)) {

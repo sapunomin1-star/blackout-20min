@@ -47,13 +47,16 @@ const nonEmpty = (v, what) => {
   return text.trim();
 };
 
-// 把使用者整理的 JSON 轉成統一格式：{ culprit, accepted[], flaw, messages{嫌疑人ID: 訊息}, truth }
+// 把使用者整理的 JSON 轉成統一格式：{ culprit, accepted[], flaws[], messages{嫌疑人ID: 訊息}, truth }
+// 口供破綻可以接受不只一句：填 flaws 陣列（舊格式的單一字串 flaw 也接受）
 export function normalizeInput(raw, options) {
   const r = resolver(options);
   const culprit = r.suspect(raw.culprit);
   const accepted = [...new Set((raw.acceptedEvidence || []).map(r.item))];
   if (!accepted.length) throw new Error('acceptedEvidence 至少要有一件物品');
-  const flaw = r.statement(raw.flaw);
+  const flawList = raw.flaws !== undefined ? raw.flaws : raw.flaw;
+  if (flawList === undefined || (Array.isArray(flawList) && !flawList.length)) throw new Error('flaws 至少要有一句口供');
+  const flaws = [...new Set((Array.isArray(flawList) ? flawList : [flawList]).map(r.statement))];
   const messages = { [culprit]: nonEmpty(raw.messages && raw.messages.culpritIncomplete, '「兇手對、理由不完整」訊息') };
   for (const w of (raw.messages && raw.messages.wrongSuspect) || []) {
     const id = r.suspect(w.suspect);
@@ -67,7 +70,7 @@ export function normalizeInput(raw, options) {
   for (const id of [...options.suspects.map((s) => s.id), ...options.items.map((i) => i.id), ...options.statements.map((s) => s.id)]) {
     if (id.includes('|')) throw new Error(`選項 ID 不能有「|」：${id}`);
   }
-  return { culprit, accepted, flaw, messages, truth };
+  return { culprit, accepted, flaws, messages, truth };
 }
 
 /* ---------- 產生 js/secrets.js ---------- */
@@ -88,10 +91,16 @@ export async function buildData(norm, options) {
     suspects.push({ i: hex(await sha(material('idx', salt, [p.id]))), ...box });
   }
   suspects.sort((a, b) => (a.i < b.i ? -1 : 1));
+  // 每件可接受的證據 × 每句可接受的破綻，各一筆全對雜湊
   const solved = [];
-  for (const e of norm.accepted) solved.push(hex(await sha(material('full', salt, [norm.culprit, e, norm.flaw]))));
+  for (const e of norm.accepted) {
+    for (const f of norm.flaws) solved.push(hex(await sha(material('full', salt, [norm.culprit, e, f]))));
+  }
   solved.sort();
-  const truth = await seal('truth', salt, [norm.culprit, norm.flaw], JSON.stringify({ t: norm.truth }));
+  // 真相的金鑰由「嫌疑人＋破綻」推導，所以每句可接受的破綻各加密一份
+  const truth = [];
+  for (const f of norm.flaws) truth.push(await seal('truth', salt, [norm.culprit, f], JSON.stringify({ t: norm.truth })));
+  truth.sort((a, b) => (a.iv < b.iv ? -1 : 1));
   return { v: 1, salt, suspects, solved, truth };
 }
 
@@ -132,20 +141,19 @@ export async function enumerate(runner, options) {
     }
   }
   const solved = all.filter((r) => r.outcome === 'solved');
-  const answer = { culprit: null, accepted: [], flaw: null, messages: {}, truth: null };
+  const answer = { culprit: null, accepted: [], flaws: [], messages: {}, truth: null };
   if (!solved.length) problems.push('沒有任何組合能破案');
   const culprits = new Set(solved.map((r) => r.suspect));
-  const flaws = new Set(solved.map((r) => r.flaw));
   const truths = new Set(solved.map((r) => r.text));
   if (culprits.size > 1) problems.push('能破案的組合指向不只一位嫌疑人');
-  if (flaws.size > 1) problems.push('能破案的組合用了不只一句破綻');
   if (truths.size > 1) problems.push('不同的全對組合解出不同的真相');
   if (solved.length) {
     answer.culprit = solved[0].suspect;
-    answer.flaw = solved[0].flaw;
     answer.truth = solved[0].text;
     answer.accepted = [...new Set(solved.map((r) => r.evidence))].sort();
-    if (answer.accepted.length !== solved.length) problems.push('同一件證據出現重複的全對組合');
+    answer.flaws = [...new Set(solved.map((r) => r.flaw))].sort();
+    // 全對組合必須剛好是「可接受證據 × 可接受破綻」的完整組合，不能缺任何一組
+    if (solved.length !== answer.accepted.length * answer.flaws.length) problems.push('全對組合不是「可接受證據 × 可接受破綻」的完整組合');
   }
   for (const s of options.suspects) {
     const rest = all.filter((r) => r.suspect === s.id && r.outcome !== 'solved');
@@ -158,14 +166,14 @@ export async function enumerate(runner, options) {
   }
   const kindsCulprit = options.suspects.filter((s) => all.some((r) => r.suspect === s.id && r.kind === 'culprit'));
   if (kindsCulprit.length !== 1) problems.push(`走兇手路徑的嫌疑人有 ${kindsCulprit.length} 位，應該剛好 1 位`);
-  return { total: all.length, solvedCount: solved.length, answer, problems: [...new Set(problems)] };
+  return { total: all.length, solvedCount: solved.length, evidenceCount: answer.accepted.length, flawCount: answer.flaws.length, answer, problems: [...new Set(problems)] };
 }
 
 // 窮舉結果和 secrets.local.json 逐字比對；回傳不符合的項目（只描述欄位，不印原文）
 export function compareWithInput(answer, norm) {
   const diffs = [];
   if (answer.culprit !== norm.culprit) diffs.push('兇手');
-  if (answer.flaw !== norm.flaw) diffs.push('口供破綻');
+  if ([...norm.flaws].sort().join() !== answer.flaws.join()) diffs.push('口供破綻');
   if ([...norm.accepted].sort().join() !== answer.accepted.join()) diffs.push('可接受的現場證據');
   for (const id of Object.keys(norm.messages)) if (answer.messages[id] !== norm.messages[id]) diffs.push(`判定訊息（${id}）`);
   if (answer.truth !== norm.truth) diffs.push('真相解說');
@@ -175,17 +183,20 @@ export function compareWithInput(answer, norm) {
 /* ---------- 測試用假資料 ---------- */
 
 // 每次隨機挑兇手、證據、破綻與訊息，只用來測試判定機制，絕不代表真正的答案
-export function syntheticInput(options) {
+export function syntheticInput(options, { flawCount = 2 } = {}) {
   const pick = (list) => list[randomInt(list.length)];
   const tag = () => randomBytes(4).toString('hex');
   const culprit = pick(options.suspects);
   const items = [...options.items];
   const accepted = [];
   while (accepted.length < 3) accepted.push(items.splice(randomInt(items.length), 1)[0].id);
+  const statements = [...options.statements];
+  const flaws = [];
+  while (flaws.length < flawCount) flaws.push(statements.splice(randomInt(statements.length), 1)[0].id);
   return {
     culprit: culprit.id,
     acceptedEvidence: accepted,
-    flaw: pick(options.statements).id,
+    flaws,
     messages: {
       culpritIncomplete: `［假訊息甲${tag()}］${tag()}`,
       wrongSuspect: options.suspects
@@ -196,9 +207,9 @@ export function syntheticInput(options) {
   };
 }
 
-export async function buildSynthetic(root) {
+export async function buildSynthetic(root, settings) {
   const options = accuseOptions(root);
-  const norm = normalizeInput(syntheticInput(options), options);
+  const norm = normalizeInput(syntheticInput(options, settings), options);
   const js = renderSecretsJs(await buildData(norm, options));
   return { options, norm, js };
 }

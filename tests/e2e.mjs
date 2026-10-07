@@ -5,7 +5,7 @@
 // 正解不寫死：先用 node 窮舉 js/verdict.js 找出各種結果的組合，再用真點擊去選。
 // 還沒有 js/secrets.js 時，改用每次隨機產生的假判定資料（攔截 js/secrets.js 的請求）測判定流程。
 // 瀏覽器：E2E_EXECUTABLE=/path/to/chromium；沒設時依序試 /opt/pw-browsers/chromium、playwright 內建、本機 Chrome。
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
@@ -17,6 +17,7 @@ import { buildSynthetic, loadVerdict, enumerate } from '../tools/lib/secrets.mjs
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'output', 'e2e');
 mkdirSync(OUT, { recursive: true });
+for (const name of readdirSync(OUT)) if (name.endsWith('.png')) rmSync(path.join(OUT, name));
 
 const spec = loadSpec(ROOT);
 const HAS_SECRETS = existsSync(path.join(ROOT, 'js', 'secrets.js'));
@@ -288,14 +289,16 @@ async function testAccuse(browser, ctxOptions, base, port) {
   check(problems.length === 0, '判定資料結構有問題：' + problems.join('；'));
   const culprit = answer.culprit;
   const wrongEvidence = options.items.find((i) => !answer.accepted.includes(i.id)).id;
-  const wrongFlaw = options.statements.find((s) => s.id !== answer.flaw).id;
+  const wrongFlaw = options.statements.find((s) => !answer.flaws.includes(s.id)).id;
+  // 全對：每件可接受的證據 × 每句可接受的破綻，全部用真點擊跑一次
+  const solvedChoices = answer.accepted.flatMap((e) => answer.flaws.map((f) => ({ suspect: culprit, evidence: e, flaw: f })));
   const scenarios = [
-    ...answer.accepted.map((e, i) => ({ name: `全對（第 ${i + 1} 種證據）`, choice: { suspect: culprit, evidence: e, flaw: answer.flaw } })),
-    { name: '兇手對、證據錯', choice: { suspect: culprit, evidence: wrongEvidence, flaw: answer.flaw } },
+    ...solvedChoices.map((choice, i) => ({ name: `全對（第 ${i + 1} 組）`, choice })),
+    { name: '兇手對、證據錯', choice: { suspect: culprit, evidence: wrongEvidence, flaw: answer.flaws[0] } },
     { name: '兇手對、破綻錯', choice: { suspect: culprit, evidence: answer.accepted[0], flaw: wrongFlaw } },
     ...options.suspects
       .filter((s) => s.id !== culprit)
-      .map((s, i) => ({ name: `選錯人（第 ${i + 1} 位）`, choice: { suspect: s.id, evidence: answer.accepted[0], flaw: answer.flaw } }))
+      .map((s, i) => ({ name: `選錯人（第 ${i + 1} 位）`, choice: { suspect: s.id, evidence: answer.accepted[0], flaw: answer.flaws[0] } }))
   ];
 
   const page = await ctx.newPage();
@@ -321,10 +324,9 @@ async function testAccuse(browser, ctxOptions, base, port) {
     }
     await noHScroll(page, `指控・${sc.name}`);
     n += 1;
-    if (n === 1 || (!isSolved && sc.name.startsWith('兇手對、證據錯')) || sc.name === '選錯人（第 1 位）') {
-      await shot(page, `m-accuse-${n + 1}-${isSolved ? 'solved' : 'message'}`);
-    }
-    if (!isSolved && n === 4) {
+    const shotName = { '全對（第 1 組）': 'm-accuse-2-solved', '兇手對、證據錯': 'm-accuse-3-incomplete', '選錯人（第 1 位）': 'm-accuse-4-wrong' }[sc.name];
+    if (shotName) await shot(page, shotName);
+    if (sc.name === '兇手對、證據錯') {
       // 重新指控：回到表單，選擇保留
       await page.locator('#retry').click();
       check(await page.locator('#accuse-form').isVisible(), '按「重新指控」應該回到表單');
@@ -332,7 +334,7 @@ async function testAccuse(browser, ctxOptions, base, port) {
     }
   }
   check(kinds.size === 5, `指控結果應該有五種（全對、兇手對理由不完整、三位選錯），實際 ${kinds.size} 種`);
-  console.log(`  ✓ ${scenarios.length} 次真點擊指控：全對 ${answer.accepted.length} 種證據各一次、兇手對但證據錯、兇手對但破綻錯、選錯三位嫌疑人，畫面文字都和解密結果相同`);
+  console.log(`  ✓ ${scenarios.length} 次真點擊指控：全對 ${solvedChoices.length} 組（${answer.accepted.length} 件證據 × ${answer.flaws.length} 句破綻）各一次、兇手對但證據錯、兇手對但破綻錯、選錯三位嫌疑人，畫面文字都和解密結果相同`);
 
   // 只用鍵盤完成一次指控
   {

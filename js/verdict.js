@@ -5,7 +5,7 @@
  *   suspects：每位嫌疑人一筆，索引是 SHA-256(…|idx|鹽|嫌疑人)，金鑰由同一位嫌疑人另外推導。
  *             四筆的密文長度一樣，依索引排序，看不出哪一筆屬於誰。
  *   solved：  「嫌疑人＋證據＋破綻」全對時的雜湊清單。
- *   truth：   真相的密文，金鑰由「嫌疑人＋破綻」推導。
+ *   truth：   真相的密文清單，金鑰由「嫌疑人＋破綻」推導；每句可接受的破綻各有一份。
  *
  * 瀏覽器（classic script）與 node（tools/ 用 vm 載入）共用這一份。
  */
@@ -67,6 +67,18 @@
       });
   }
 
+  // 依序試每一份密文，第一份解得開的就是；金鑰不對時 AES-GCM 會驗證失敗
+  function openAny(label, salt, parts, boxes) {
+    var i = 0;
+    function next() {
+      if (i >= boxes.length) return Promise.reject(new Error('判定資料無法解開'));
+      var box = boxes[i];
+      i += 1;
+      return openBox(label, salt, parts, box).catch(next);
+    }
+    return next();
+  }
+
   function checkChoice(choice) {
     ['suspect', 'evidence', 'flaw'].forEach(function (field) {
       var value = choice && choice[field];
@@ -89,7 +101,7 @@
       var salt = data.salt;
       return hashHex('full', salt, [choice.suspect, choice.evidence, choice.flaw]).then(function (full) {
         if (data.solved.indexOf(full) !== -1) {
-          return openBox('truth', salt, [choice.suspect, choice.flaw], data.truth).then(function (payload) {
+          return openAny('truth', salt, [choice.suspect, choice.flaw], [].concat(data.truth)).then(function (payload) {
             return { outcome: 'solved', text: payload.t };
           });
         }
