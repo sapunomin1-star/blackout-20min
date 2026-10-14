@@ -556,7 +556,7 @@ async function playInterrogation(page, base, entry, code) {
   check((await page.locator('section.break').count()) === seenBreaks.size, `${entry.id} 改口段數應該是 ${seenBreaks.size}`);
   check((await page.locator('section.react-note').count()) === seenReacts.size, `${entry.id} 反應段數應該是 ${seenReacts.size}`);
   const missLog = await page.locator(`[data-log-for="${missPerson.id}"]`).textContent();
-  check(missLog.includes('No.' + String(missNo).padStart(2, '0') + ' 無關'), `${entry.id} 出示紀錄要記下無關的那一件`);
+  check(missLog.includes('No.' + String(missNo).padStart(2, '0') + ' 沒鬆口'), `${entry.id} 出示紀錄要記下沒能讓對方鬆口的那一件`);
   // 重新整理後，已經改口的內容要還在，而且不重複
   await page.reload();
   await page.locator('.suspects').waitFor();

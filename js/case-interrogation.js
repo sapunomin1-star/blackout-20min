@@ -176,7 +176,7 @@
               input.value = '';
               feedback.className = 'present-feedback is-early';
               feedback.appendChild(el('span', { className: 'deflect', text: result.early }));
-              feedback.appendChild(el('span', { className: 'deflect-note', text: '（他有反應，但還不打算說。先從別的地方突破，再拿這件回來。沒有扣信用）' }));
+              feedback.appendChild(el('span', { className: 'deflect-note', text: '（有反應，但還不打算說。先從別的地方突破，再拿這件回來。沒有扣信用）' }));
               return;
             }
             if (result && result.same) {
@@ -210,7 +210,7 @@
             var line = p.deflect[(list.length - 1) % p.deflect.length];
             feedback.className = 'present-feedback is-miss';
             feedback.appendChild(el('span', { className: 'deflect', text: line }));
-            feedback.appendChild(el('span', { className: 'deflect-note', text: repeat ? '（這件之前就給他看過了，沒有再扣信用）' : '（看起來跟這個人無關。信用 −1）' }));
+            feedback.appendChild(el('span', { className: 'deflect-note', text: repeat ? '（這件之前已經出示過了，沒有再扣信用）' : '（沒能讓對方鬆口。信用 −1）' }));
           })
           .catch(function () {
             button.disabled = false;
@@ -231,7 +231,7 @@
         entries.push({ no: no, text: kind === 'react' ? '有反應' : '改口' });
       });
       (tried[p.id] || []).forEach(function (no) {
-        entries.push({ no: no, text: '無關' });
+        entries.push({ no: no, text: '沒鬆口' });
       });
       entries.sort(function (a, b) {
         return a.no - b.no;
