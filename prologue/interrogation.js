@@ -1,6 +1,6 @@
 /*
  * 偵訊頁的互動：記錄哪些嫌疑人已經追問過。
- * 口供文字都寫在 interrogation.html；這裡只處理標記。
+ * 口供文字都寫在 prologue/interrogation.html；這裡只處理標記。
  */
 (function () {
   'use strict';

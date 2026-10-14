@@ -1,6 +1,6 @@
 /*
  * 現場調查頁的互動：房間分頁、平面圖點選、已查看標記。
- * 物品文字都寫在 scene.html；這裡只處理顯示與紀錄。
+ * 物品文字都寫在 prologue/scene.html；這裡只處理顯示與紀錄。
  */
 (function () {
   'use strict';

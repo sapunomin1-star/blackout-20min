@@ -2,12 +2,15 @@
   "name": "blackout-20min",
   "version": "1.0.0",
   "private": true,
-  "description": "《停電的二十分鐘》的驗證與機密檔工具。遊戲本體是純靜態網頁，不需要 build。",
+  "description": "《懷錶檔案》（序章《停電的二十分鐘》與後續章節）的驗證與機密檔工具。遊戲本體是純靜態網頁，不需要 build。",
   "type": "module",
   "scripts": {
     "check": "node tools/check.mjs",
     "e2e": "node tests/e2e.mjs",
     "build:secrets": "node tools/build-secrets.mjs",
+    "build:chapters": "node tools/build-chapters.mjs",
+    "chapters:seal": "node tools/seal.mjs seal",
+    "chapters:unseal": "node tools/seal.mjs unseal",
     "ids": "node tools/build-secrets.mjs --ids",
     "serve": "node tools/serve.mjs"
   },

@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&amp;display=swap" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&amp;display=swap"></noscript>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="../css/style.css">
   <script>document.documentElement.classList.add('js');</script>
 </head>
 <body class="page-accuse">
   <header class="topbar">
-    <a class="topbar-back" href="index.html">← 首頁</a>
+    <a class="topbar-back" href="index.html">← 序章</a>
     <p class="topbar-role">最終指控</p>
     <p class="topbar-progress"></p>
   </header>
@@ -135,9 +135,15 @@
         <span class="stamp solved-stamp" id="solved-stamp" hidden>破案</span>
         <h2 id="verdict-title" tabindex="-1"></h2>
         <div class="verdict-text" id="verdict-text"></div>
+        <div class="next-code" id="next-code" hidden>
+          <p class="label next-label"></p>
+          <p class="code-display"></p>
+          <p class="next-help">這支手機已經自動解鎖。另一支手機請在章節選單輸入這組通行碼。</p>
+          <a class="btn btn-primary btn-block next-link" href="../ch1/"></a>
+        </div>
         <div class="verdict-actions">
           <button class="btn btn-primary" type="button" id="retry">重新指控</button>
-          <a class="btn btn-ghost" href="index.html" id="home-link" hidden>回到首頁</a>
+          <a class="btn btn-ghost" href="../index.html" id="home-link" hidden>回章節選單</a>
         </div>
       </div>
     </section>
@@ -145,8 +151,8 @@
 
   <div class="lights" id="lights" aria-hidden="true"></div>
 
-  <script src="js/common.js"></script>
-  <script src="js/verdict.js"></script>
-  <script src="js/accuse.js"></script>
+  <script src="../js/common.js"></script>
+  <script src="../js/verdict.js"></script>
+  <script src="accuse.js"></script>
 </body>
 </html>

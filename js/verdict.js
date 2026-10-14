@@ -1,11 +1,12 @@
 /*
  * 判定核心：把玩家的選擇拿去雜湊、解密，不含任何答案或訊息原文。
  *
- * 判定資料（js/secrets.js，由 tools/build-secrets.mjs 產生）只有鹽、雜湊與 AES-GCM 密文：
+ * 判定資料（prologue/secrets.js，由 tools/build-secrets.mjs 產生）只有鹽、雜湊與 AES-GCM 密文：
  *   suspects：每位嫌疑人一筆，索引是 SHA-256(…|idx|鹽|嫌疑人)，金鑰由同一位嫌疑人另外推導。
  *             四筆的密文長度一樣，依索引排序，看不出哪一筆屬於誰。
  *   solved：  「嫌疑人＋證據＋破綻」全對時的雜湊清單。
  *   truth：   真相的密文清單，金鑰由「嫌疑人＋破綻」推導；每句可接受的破綻各有一份。
+ *             解開後是 { t: 真相, n: 下一章（含通行碼）或 null }。
  *
  * 瀏覽器（classic script）與 node（tools/ 用 vm 載入）共用這一份。
  */
@@ -102,7 +103,7 @@
       return hashHex('full', salt, [choice.suspect, choice.evidence, choice.flaw]).then(function (full) {
         if (data.solved.indexOf(full) !== -1) {
           return openAny('truth', salt, [choice.suspect, choice.flaw], [].concat(data.truth)).then(function (payload) {
-            return { outcome: 'solved', text: payload.t };
+            return { outcome: 'solved', text: payload.t, next: payload.n || null };
           });
         }
         return hashHex('idx', salt, [choice.suspect]).then(function (index) {
