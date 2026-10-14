@@ -505,6 +505,18 @@ async function playInterrogation(page, base, entry, code) {
   await page.locator(`#person-${missPerson.id} .present-form button`).click();
   await page.locator(`#person-${missPerson.id} .present-feedback.is-miss`).waitFor();
   check((await page.locator('.credibility .dot.is-on').count()) === before - 1, `${entry.id} 出示錯的證物應該扣一點信用`);
+  // 證人：出示證物不扣信用
+  const witness = payload.people.find((p) => p.kind === 'witness');
+  if (witness) {
+    let wNo = 1;
+    while (breakSet.has(`${witness.id}:${wNo}`)) wNo += 1;
+    const wCard = page.locator(`#person-${witness.id}`);
+    await wCard.locator('.present > summary').click();
+    await typeInto(page, wCard.locator('.present-input'), wNo);
+    await wCard.locator('.present-form button').click();
+    await wCard.locator('.present-feedback.is-miss').waitFor();
+    check((await page.locator('.credibility .dot.is-on').count()) === before - 1, `${entry.id} 給證人看證物不該扣信用`);
+  }
   // 有前置條件的改口：還沒逼出前一段就先出示，只會得到一句暗示，不扣信用、不記錄
   const early = presents.find((x) => (x.content.requires || []).length);
   if (early) {

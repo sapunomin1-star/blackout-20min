@@ -40,7 +40,8 @@
         el('div', { className: 'recap-body' }, [
           el('p', { text: '請現場調查員念出證物編號，在對的人面前「出示證物」，對方可能會改口，說出新的事。' }),
           el('p', { text: '有些人要一步一步逼：先拆穿一句，下一句才鬆得動。證物跟他有關卻還沒到時候，他會露出一點反應，不扣信用。' }),
-          el('p', { text: '出示不相干的證物會扣「信用」。信用用光還是可以繼續，但結案評等會變差。' })
+          el('p', { text: '出示不相干的證物會扣「信用」。信用用光還是可以繼續，但結案評等會變差。' }),
+          el('p', { text: '標著「證人」的人只說明自己看到的事；給證人看證物不會扣信用。' })
         ])
       ])
     );
@@ -194,6 +195,13 @@
             if (result) {
               input.value = '';
               details.open = false;
+              return;
+            }
+            if (p.kind === 'witness') {
+              // 證人只負責說明看到的事：出示證物不扣信用，也不記錄
+              feedback.className = 'present-feedback is-miss';
+              feedback.appendChild(el('span', { className: 'deflect', text: p.deflect[0] }));
+              feedback.appendChild(el('span', { className: 'deflect-note', text: '（證人只說明看到的事，出示證物不會扣信用）' }));
               return;
             }
             var list = tried[p.id] || [];
