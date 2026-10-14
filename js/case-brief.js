@@ -7,6 +7,15 @@
 
   var el = Case.el;
 
+  // 標題下的分隔線，中間放一只懷錶圖示（和章節選單一樣）
+  function titleRule() {
+    var rule = el('div', { className: 'title-rule', 'aria-hidden': 'true' });
+    rule.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">' +
+      '<circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l2.5 2"/><path d="M10 3.5h4M12 3.5v2"/></svg>';
+    return rule;
+  }
+
   Case.boot('brief', function (app, data, ctx) {
     var chapter = data.chapter;
     document.title = chapter.label + '・' + chapter.title + '｜懷錶檔案';
@@ -15,7 +24,7 @@
       el('header', { className: 'masthead chapter-masthead' }, [
         el('p', { className: 'kicker', text: chapter.label }),
         el('h1', { className: 'game-title chapter-title', text: chapter.title }),
-        el('div', { className: 'title-rule', 'aria-hidden': 'true' })
+        titleRule()
       ])
     );
 
