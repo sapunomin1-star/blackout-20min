@@ -23,7 +23,7 @@
     document.title = data.chapter.label + '・現場調查｜懷錶檔案';
 
     app.appendChild(
-      el('p', { className: 'privacy-note', text: '這是現場調查員的畫面，別讓偵訊官看到。每件證物都有編號，偵訊官「出示證物」時要用，記得念給對方聽。' })
+      el('p', { className: 'privacy-note', text: '這是現場調查員的畫面，別讓偵訊官看到。每件證物都有編號，偵訊官「出示證物」時要用：先把每件證物的編號和名稱念給對方聽。' })
     );
     app.appendChild(
       el('div', { className: 'page-head' }, [
