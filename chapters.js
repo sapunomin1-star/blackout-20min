@@ -20,10 +20,10 @@ window.BLACKOUT_CHAPTERS = {
    "title": "贗品之夜",
    "teaser": "中秋夜的拍賣預展，上了鎖的展示櫃裡，第二只懷錶變成了贗品。",
    "href": "ch1/",
-   "salt": "b35042656ddfdf0efe8f9661987a1b79",
+   "salt": "134fce955769cf1d37390f90aacaa19f",
    "check": {
-    "iv": "516f7b66f2fc462f15f21ba7",
-    "c": "c2364f3f8ced0b049fc13ae931e403e81a4f805e06c72e7233b1dfaf"
+    "iv": "bf2fd8a8544685b0412d0d02",
+    "c": "a2cd1bd51c5a2b2ada282db503c67ea7998494758060f2d7776d93c1"
    }
   },
   {
@@ -32,10 +32,10 @@ window.BLACKOUT_CHAPTERS = {
    "title": "鐘樓十三響",
    "teaser": "颱風夜的舊鐘樓，有人倒在機芯旁，午夜的鐘多敲了一下。",
    "href": "ch2/",
-   "salt": "adc144a69cba0b396096d1f2410fd068",
+   "salt": "afd7b69a431d2446ca507c864a153e03",
    "check": {
-    "iv": "9ca1bd7b0f3546188e8c04eb",
-    "c": "0c161c53ce0a8092b4e4cd653751e8cef226ba8ff7394c68c3da687d"
+    "iv": "2aaee300d36d29b1eb98d18f",
+    "c": "5c2200f1bba07b8773d8f374af86eff8eb9c934c69292cfd9488ff68"
    }
   },
   {
@@ -44,10 +44,10 @@ window.BLACKOUT_CHAPTERS = {
    "title": "第十三時",
    "teaser": "三只錶聚齊的那一夜，三十年前那場火，終於要說出真相。",
    "href": "ch3/",
-   "salt": "bb4d8915ba5076d83f4b5c0f7cc3455e",
+   "salt": "7b40096baff0082e53e6f16ae26d4a54",
    "check": {
-    "iv": "0456e7d3b0ffc39c834e1fc6",
-    "c": "fd891650da224e6e1a4222fa5531128523f9395c2502e664390d79c9"
+    "iv": "55804509b2f0ce4e39a96eba",
+    "c": "b1607b79de2ecac289718335ccfff9e166c531fec62bc8285905d864"
    }
   }
  ]
