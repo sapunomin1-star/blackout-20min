@@ -168,10 +168,19 @@
           return;
         }
         button.disabled = true;
-        reveal(p, no, false)
+        var confessed = hasConfessed(p);
+        reveal(p, no, false, confessed)
           .then(function (result) {
             button.disabled = false;
             renderLog(p);
+            if (confessed && (!result || result.confessed)) {
+              // 已經認罪或坦白的人：不再推託，也不扣信用
+              input.value = '';
+              feedback.className = 'present-feedback is-early';
+              feedback.appendChild(el('span', { className: 'deflect', text: p.name + '看了 No.' + pad(no) + '，只是搖了搖頭——該說的，都已經說了。' }));
+              feedback.appendChild(el('span', { className: 'deflect-note', text: '（已經全部招了的人不會再改口，沒有扣信用）' }));
+              return;
+            }
             if (result && result.early) {
               // 有關，但前一段還沒逼出來：給一句暗示，不扣信用、不記錄
               input.value = '';
@@ -229,6 +238,10 @@
       return details;
     }
 
+    function hasConfessed(p) {
+      return Boolean(document.querySelector('[data-breaks-for="' + p.id + '"] [data-final]'));
+    }
+
     // 出示紀錄：給這個人看過哪些證物、各是什麼結果
     function renderLog(p) {
       var log = document.querySelector('[data-log-for="' + p.id + '"]');
@@ -256,9 +269,11 @@
     //   前置的改口還沒逼出來 → { early: 暗示 }（不記錄）
     //   別件證物已經觸發過的同一段 → { same: true, first: 那件的編號 }
     //   反應 → { react: true }；新的改口 → true
-    function reveal(p, no, silent) {
+    function reveal(p, no, silent, afterFinal) {
       return ctx.openIndexed(data.breaks, ['presentidx', ctx.salt, p.id, String(no)], ['present', ctx.salt, p.id, String(no)]).then(function (content) {
         if (!content) return false;
+        // 已經認罪的人，新的「反應」就不再出現（他不會一邊認罪一邊推託）
+        if (afterFinal && content.react) return { confessed: true };
         var box = document.querySelector('[data-breaks-for="' + p.id + '"]');
         var missing = (content.requires || []).filter(function (id) {
           return !box.querySelector('[data-break="' + id + '"]');
@@ -291,7 +306,7 @@
           refreshMarks();
           return { react: true };
         }
-        var section = el('section', { className: 'break' + (silent ? '' : ' is-new'), 'data-evidence': String(no), 'data-break': content.id || null }, [
+        var section = el('section', { className: 'break' + (silent ? '' : ' is-new'), 'data-evidence': String(no), 'data-break': content.id || null, 'data-final': content.final ? '1' : null }, [
           el('p', { className: 'break-head' }, [el('span', { className: 'stamp break-stamp', text: content.title || '改口' }), el('span', { className: 'break-cause', text: causeText([String(no)]) })]),
           lineList(content.lines),
           content.observe ? el('p', { className: 'label', text: '觀察反應' }) : null,

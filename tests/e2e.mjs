@@ -538,7 +538,10 @@ async function playInterrogation(page, base, entry, code) {
   const seenBreaks = new Set();
   const seenReacts = new Set();
   while (pending.length) {
-    const index = pending.findIndex((x) => (x.content.requires || []).every((id) => revealedIds.has(id)));
+    // 認罪之後對方就不再給反應，所以認罪那一段排到最後
+    const ready = (x) => (x.content.requires || []).every((id) => revealedIds.has(id));
+    let index = pending.findIndex((x) => ready(x) && !x.content.final);
+    if (index === -1) index = pending.findIndex(ready);
     check(index !== -1, `${entry.id} 有改口的前置條件永遠達不成`);
     if (index === -1) break;
     const x = pending.splice(index, 1)[0];
@@ -568,6 +571,19 @@ async function playInterrogation(page, base, entry, code) {
     revealedIds.add(x.content.id);
   }
   check((await page.locator('.credibility .dot.is-on').count()) === before - 1, `${entry.id} 出示對的證物不該扣信用`);
+  // 認罪之後：再出示別的證物，只會說已經全部招了，不扣信用
+  const confessor = presents.find((x) => x.content.final);
+  if (confessor) {
+    let cNo = 1;
+    while (breakSet.has(`${confessor.person}:${cNo}`)) cNo += 1;
+    const cCard = page.locator(`#person-${confessor.person}`);
+    const cDetails = cCard.locator('.present');
+    if (!(await cDetails.evaluate((el) => el.open))) await cDetails.locator(':scope > summary').click();
+    await typeInto(page, cCard.locator('.present-input'), cNo);
+    await cCard.locator('.present-form button').click();
+    await cCard.locator('.present-feedback.is-early').filter({ hasText: '都已經說了' }).waitFor({ timeout: 10000 });
+    check((await page.locator('.credibility .dot.is-on').count()) === before - 1, `${entry.id} 認罪之後再出示不該扣信用`);
+  }
   check((await page.locator('section.break').count()) === seenBreaks.size, `${entry.id} 改口段數應該是 ${seenBreaks.size}`);
   check((await page.locator('section.react-note').count()) === seenReacts.size, `${entry.id} 反應段數應該是 ${seenReacts.size}`);
   const missLog = await page.locator(`[data-log-for="${missPerson.id}"]`).textContent();

@@ -279,9 +279,11 @@ export async function buildPayloads(ch, chapters, salt) {
       const requires = (b.requires || []).map((key) => idOf.get(key));
       // earlyBy：還缺哪一段，就給哪一句暗示（依 requires 的順序取第一個缺的）
       const earlyBy = b.earlyBy ? Object.fromEntries(Object.entries(b.earlyBy).map(([key, text]) => [idOf.get(key), text])) : null;
+      // final：認罪或坦白。之後再出示別的證物，對方只會說已經全部招了，不扣信用
+      const final = Boolean(b.final || ['認罪', '坦白'].includes(b.title));
       const content = b.react
         ? { id, react: true, say: b.react, observe: b.observe || null, requires, early: b.early || null, earlyBy }
-        : { id, lines: b.lines, observe: b.observe || null, title: b.title || null, requires, early: b.early || null, earlyBy };
+        : { id, lines: b.lines, observe: b.observe || null, title: b.title || null, requires, early: b.early || null, earlyBy, final };
       for (const e of b.evidence) {
         breaks.push({
           i: shaHex(['presentidx', salt, p.id, String(e)]),
