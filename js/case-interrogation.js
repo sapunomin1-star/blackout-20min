@@ -255,7 +255,7 @@
         var missing = (content.requires || []).filter(function (id) {
           return !box.querySelector('[data-break="' + id + '"]');
         });
-        if (missing.length) return { early: content.early || p.name + '盯著這件東西看了一會兒，什麼也沒說。' };
+        if (missing.length) return { early: (content.earlyBy && content.earlyBy[missing[0]]) || content.early || p.name + '盯著這件東西看了一會兒，什麼也沒說。' };
         var list = presented[p.id] || [];
         if (list.indexOf(no) === -1) {
           list.push(no);

@@ -514,6 +514,9 @@ async function playInterrogation(page, base, entry, code) {
     await typeInto(page, card.locator('.present-input'), early.evidence);
     await card.locator('.present-form button').click();
     await card.locator('.present-feedback.is-early').waitFor({ timeout: 10000 });
+    const firstMissing = early.content.requires[0];
+    const expectEarly = (early.content.earlyBy && early.content.earlyBy[firstMissing]) || early.content.early;
+    check(squash(await card.locator('.present-feedback.is-early .deflect').innerText()) === squash(expectEarly), `${entry.id} 前置條件沒達成時的暗示不對`);
     check((await card.locator(`[data-breaks-for="${early.person}"] [data-evidence~="${early.evidence}"]`).count()) === 0, `${entry.id} 前置條件沒達成時不該顯示改口`);
     check((await page.locator('.credibility .dot.is-on').count()) === before - 1, `${entry.id} 前置條件沒達成時不該扣信用`);
   }

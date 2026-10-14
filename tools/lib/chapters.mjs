@@ -151,6 +151,8 @@ export function validate(chapters) {
         const hasLines = Array.isArray(b.lines) && b.lines.length > 0;
         if (hasLines === Boolean(b.react)) bad(`${p.id} 的每段出示結果要嘛是改口（lines），要嘛是反應（react），不能兩者都有或都沒有`);
         for (const r of b.requires || []) if (!keys.includes(r) || r === b.key) bad(`${p.id} 的改口前置條件 ${r} 不存在`);
+        for (const r of Object.keys(b.earlyBy || {})) if (!(b.requires || []).includes(r)) bad(`${p.id} 的 earlyBy 有不在前置條件裡的 ${r}`);
+        if ((b.requires || []).length && !b.early) bad(`${p.id} 有前置條件的改口要寫 early 暗示`);
       }
       // 前置條件不能繞成一圈
       const byKey = new Map(breaks.filter((b) => b.key).map((b) => [b.key, b]));
@@ -275,9 +277,11 @@ export async function buildPayloads(ch, chapters, salt) {
       // requires：要先逼出哪幾段，這段才會說；沒達成時只給 early 這句暗示。
       const id = `${p.id}-${k + 1}`;
       const requires = (b.requires || []).map((key) => idOf.get(key));
+      // earlyBy：還缺哪一段，就給哪一句暗示（依 requires 的順序取第一個缺的）
+      const earlyBy = b.earlyBy ? Object.fromEntries(Object.entries(b.earlyBy).map(([key, text]) => [idOf.get(key), text])) : null;
       const content = b.react
-        ? { id, react: true, say: b.react, observe: b.observe || null, requires, early: b.early || null }
-        : { id, lines: b.lines, observe: b.observe || null, title: b.title || null, requires, early: b.early || null };
+        ? { id, react: true, say: b.react, observe: b.observe || null, requires, early: b.early || null, earlyBy }
+        : { id, lines: b.lines, observe: b.observe || null, title: b.title || null, requires, early: b.early || null, earlyBy };
       for (const e of b.evidence) {
         breaks.push({
           i: shaHex(['presentidx', salt, p.id, String(e)]),
@@ -622,7 +626,7 @@ export function sourceTexts(ch) {
     interrogation.push(...(p.deflect || []));
     for (const l of p.lines || []) interrogation.push(l.text);
     for (const f of p.followups || []) interrogation.push(f.q, f.observe || '', ...f.lines.map((l) => l.text));
-    for (const b of p.breaks || []) interrogation.push(b.observe || '', b.react || '', b.early || '', ...(b.lines || []).map((l) => l.text));
+    for (const b of p.breaks || []) interrogation.push(b.observe || '', b.react || '', b.early || '', ...Object.values(b.earlyBy || {}), ...(b.lines || []).map((l) => l.text));
   }
   const shared = [
     ...(ch.brief.recap || []),
