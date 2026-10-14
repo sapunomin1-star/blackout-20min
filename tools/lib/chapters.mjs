@@ -85,6 +85,11 @@ export function allItems(chapter) {
   return out;
 }
 
+// 還沒到時候的反應：{ say, observe }，跟一般反應一樣呈現
+function hintOf(h) {
+  return h ? { say: h.say, observe: h.observe || null } : null;
+}
+
 // 走訪所有口供句（開場、追問、翻供）
 export function allLines(chapter) {
   const out = [];
@@ -153,6 +158,10 @@ export function validate(chapters) {
         for (const r of b.requires || []) if (!keys.includes(r) || r === b.key) bad(`${p.id} 的改口前置條件 ${r} 不存在`);
         for (const r of Object.keys(b.earlyBy || {})) if (!(b.requires || []).includes(r)) bad(`${p.id} 的 earlyBy 有不在前置條件裡的 ${r}`);
         if ((b.requires || []).length && !b.early) bad(`${p.id} 有前置條件的改口要寫 early 暗示`);
+        // 還沒到時候的反應要跟一般反應長得一樣：一句話（say）加上觀察（observe）
+        for (const h of [b.early, ...Object.values(b.earlyBy || {})].filter(Boolean)) {
+          if (typeof h !== 'object' || typeof h.say !== 'string' || !h.say || (h.observe != null && typeof h.observe !== 'string')) bad(`${p.id} 的 early／earlyBy 要寫成 { say, observe }`);
+        }
       }
       // 前置條件不能繞成一圈
       const byKey = new Map(breaks.filter((b) => b.key).map((b) => [b.key, b]));
@@ -278,12 +287,14 @@ export async function buildPayloads(ch, chapters, salt) {
       const id = `${p.id}-${k + 1}`;
       const requires = (b.requires || []).map((key) => idOf.get(key));
       // earlyBy：還缺哪一段，就給哪一句暗示（依 requires 的順序取第一個缺的）
-      const earlyBy = b.earlyBy ? Object.fromEntries(Object.entries(b.earlyBy).map(([key, text]) => [idOf.get(key), text])) : null;
+      // 暗示的樣子跟一般反應一樣（say＋observe），玩家分不出這件證物之後會不會讓對方改口
+      const early = hintOf(b.early);
+      const earlyBy = b.earlyBy ? Object.fromEntries(Object.entries(b.earlyBy).map(([key, h]) => [idOf.get(key), hintOf(h)])) : null;
       // final：認罪或坦白。之後再出示別的證物，對方只會說已經全部招了，不扣信用
       const final = Boolean(b.final || ['認罪', '坦白'].includes(b.title));
       const content = b.react
-        ? { id, react: true, say: b.react, observe: b.observe || null, requires, early: b.early || null, earlyBy }
-        : { id, lines: b.lines, observe: b.observe || null, title: b.title || null, requires, early: b.early || null, earlyBy, final };
+        ? { id, react: true, say: b.react, observe: b.observe || null, requires, early, earlyBy }
+        : { id, lines: b.lines, observe: b.observe || null, title: b.title || null, requires, early, earlyBy, final };
       for (const e of b.evidence) {
         breaks.push({
           i: shaHex(['presentidx', salt, p.id, String(e)]),
@@ -578,6 +589,8 @@ export async function verifyAgainstSources(root, chapters) {
         const hit = presents.find((x) => x.person === p.id && b.evidence.includes(x.evidence));
         const want = (b.requires || []).map((key) => idOf.get(key));
         if (hit && JSON.stringify(hit.content.requires || []) !== JSON.stringify(want)) fail(`${p.id} 的改口前置條件和原始內容不同`);
+        const wantEarly = { early: hintOf(b.early), earlyBy: b.earlyBy ? Object.fromEntries(Object.entries(b.earlyBy).map(([key, h]) => [idOf.get(key), hintOf(h)])) : null };
+        if (hit && JSON.stringify({ early: hit.content.early, earlyBy: hit.content.earlyBy }) !== JSON.stringify(wantEarly)) fail(`${p.id} 的還沒到時候的反應和原始內容不同`);
       }
     }
 
@@ -628,7 +641,10 @@ export function sourceTexts(ch) {
     interrogation.push(...(p.deflect || []));
     for (const l of p.lines || []) interrogation.push(l.text);
     for (const f of p.followups || []) interrogation.push(f.q, f.observe || '', ...f.lines.map((l) => l.text));
-    for (const b of p.breaks || []) interrogation.push(b.observe || '', b.react || '', b.early || '', ...Object.values(b.earlyBy || {}), ...(b.lines || []).map((l) => l.text));
+    for (const b of p.breaks || []) {
+      const hints = [b.early, ...Object.values(b.earlyBy || {})].filter(Boolean).flatMap((h) => [h.say || '', h.observe || '']);
+      interrogation.push(b.observe || '', b.react || '', ...hints, ...(b.lines || []).map((l) => l.text));
+    }
   }
   const shared = [
     ...(ch.brief.recap || []),

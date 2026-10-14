@@ -517,7 +517,7 @@ async function playInterrogation(page, base, entry, code) {
     await wCard.locator('.present-feedback.is-miss').waitFor();
     check((await page.locator('.credibility .dot.is-on').count()) === before - 1, `${entry.id} 給證人看證物不該扣信用`);
   }
-  // 有前置條件的改口：還沒逼出前一段就先出示，只會得到一句暗示，不扣信用、不記錄
+  // 有前置條件的改口：還沒逼出前一段就先出示，看起來就跟一般的反應一樣，不扣信用
   const early = presents.find((x) => (x.content.requires || []).length);
   if (early) {
     const card = page.locator(`#person-${early.person}`);
@@ -525,12 +525,20 @@ async function playInterrogation(page, base, entry, code) {
     if (!(await details.evaluate((el) => el.open))) await details.locator(':scope > summary').click();
     await typeInto(page, card.locator('.present-input'), early.evidence);
     await card.locator('.present-form button').click();
-    await card.locator('.present-feedback.is-early').waitFor({ timeout: 10000 });
+    const note = card.locator(`section.react-note[data-early][data-evidence~="${early.evidence}"]`);
+    await note.waitFor({ timeout: 10000 });
     const firstMissing = early.content.requires[0];
-    const expectEarly = (early.content.earlyBy && early.content.earlyBy[firstMissing]) || early.content.early;
-    check(squash(await card.locator('.present-feedback.is-early .deflect').innerText()) === squash(expectEarly), `${entry.id} 前置條件沒達成時的暗示不對`);
-    check((await card.locator(`[data-breaks-for="${early.person}"] [data-evidence~="${early.evidence}"]`).count()) === 0, `${entry.id} 前置條件沒達成時不該顯示改口`);
+    const hint = (early.content.earlyBy && early.content.earlyBy[firstMissing]) || early.content.early;
+    check(squash(await note.locator('.react-say').innerText()) === squash(hint.say), `${entry.id} 前置條件沒達成時的反應不對`);
+    if (hint.observe) check(squash(await note.locator('.reaction').innerText()) === squash(hint.observe), `${entry.id} 前置條件沒達成時的觀察不對`);
+    check(squash(await card.locator('.present-feedback').innerText()).includes('反應記在上面了'), `${entry.id} 前置條件沒達成時，回饋要跟一般反應一樣`);
+    check((await card.locator(`section.break[data-evidence~="${early.evidence}"]`).count()) === 0, `${entry.id} 前置條件沒達成時不該顯示改口`);
     check((await page.locator('.credibility .dot.is-on').count()) === before - 1, `${entry.id} 前置條件沒達成時不該扣信用`);
+    check((await card.locator(`[data-log-for="${early.person}"]`).textContent()).includes('No.' + String(early.evidence).padStart(2, '0') + ' 有反應'), `${entry.id} 前置條件沒達成時，出示紀錄要寫「有反應」`);
+    // 重新整理後，這則反應還在
+    await page.reload();
+    await page.locator('.suspects').waitFor();
+    await card.locator(`section.react-note[data-early][data-evidence~="${early.evidence}"]`).waitFor({ state: 'attached', timeout: 10000 });
   }
   // 出示對的證物（組合由 node 窮舉找出）：依前置條件的順序，對方要改口或有反應
   const pending = [...presents];
@@ -550,8 +558,9 @@ async function playInterrogation(page, base, entry, code) {
     if (!(await details.evaluate((el) => el.open))) await details.locator(':scope > summary').click();
     await typeInto(page, card.locator('.present-input'), x.evidence);
     await card.locator('.present-form button').click();
-    const section = card.locator(`[data-breaks-for="${x.person}"] [data-evidence~="${x.evidence}"]`);
+    const section = card.locator(`[data-breaks-for="${x.person}"] > section:not([data-early])[data-evidence~="${x.evidence}"]`);
     await section.waitFor({ timeout: 10000 });
+    check((await card.locator(`section.react-note[data-early][data-evidence~="${x.evidence}"]`).count()) === 0, `${entry.id} 真的改口或有反應之後，先前那則還沒到時候的反應要拿掉`);
     const key = `${x.person}:${x.content.id}`;
     if (x.content.react) {
       check(squash(await section.locator('.react-say').innerText()) === squash(x.content.say), `${entry.id} 出示 No.${x.evidence} 給 ${x.person} 的反應不一致`);
@@ -571,6 +580,19 @@ async function playInterrogation(page, base, entry, code) {
     revealedIds.add(x.content.id);
   }
   check((await page.locator('.credibility .dot.is-on').count()) === before - 1, `${entry.id} 出示對的證物不該扣信用`);
+  check((await page.locator('section.react-note[data-early]').count()) === 0, `${entry.id} 全部逼出來之後，不該還留著還沒到時候的反應`);
+  // 有反應的證物再出示一次：回應和第一次一樣（跟還沒到時候的反應分不出來），不扣信用
+  const finals = new Set(presents.filter((x) => x.content.final).map((x) => x.person));
+  const again = presents.find((x) => x.content.react && !finals.has(x.person));
+  if (again) {
+    const card = page.locator(`#person-${again.person}`);
+    const details = card.locator('.present');
+    if (!(await details.evaluate((el) => el.open))) await details.locator(':scope > summary').click();
+    await typeInto(page, card.locator('.present-input'), again.evidence);
+    await card.locator('.present-form button').click();
+    await card.locator('.present-feedback').filter({ hasText: '反應記在上面了' }).waitFor({ timeout: 10000 });
+    check((await page.locator('.credibility .dot.is-on').count()) === before - 1, `${entry.id} 有反應的證物再出示一次不該扣信用`);
+  }
   // 認罪之後：再出示別的證物，只會說已經全部招了，不扣信用
   const confessor = presents.find((x) => x.content.final);
   if (confessor) {

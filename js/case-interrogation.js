@@ -1,8 +1,10 @@
 /*
  * 新章節的偵訊頁：口供（每句有編號）、追問、出示證物。
  * 出示證物的結果另外加密，要「人物＋證物編號」對了才解得開：
- *   改口：說出新的口供（有些改口要先逼出前一段才會說，否則只給一句暗示）
+ *   改口：說出新的口供（有些改口要先逼出前一段才會說）
  *   反應：證物和這個人有關，但他沒有改口；不扣信用
+ *   還沒到時候：前一段還沒逼出來。畫面和紀錄都跟「反應」一模一樣，
+ *     免得玩家一看就知道這件證物之後會讓對方改口
  *   都不是：推託，扣一點信用
  * 口供內容來自加密的 interrogation.data.js。
  */
@@ -16,6 +18,7 @@
     var presented = progress.get('presented', {});
     var tried = progress.get('tried', {});
     var outcome = {}; // 人物 id → { 證物編號: 'break' | 'react' }，畫出示紀錄用
+    var early = progress.get('early', {}); // 人物 id → { 證物編號: { say, observe } }：還沒到時候的反應
     var asked = progress.get('asked', {});
     var maxCredibility = data.credibility || 5;
     var credibility = progress.get('credibility', maxCredibility);
@@ -39,7 +42,7 @@
         el('summary', null, [el('span', { className: 'recap-head' }, [el('span', { className: 'label', text: '怎麼出示證物' }), el('span', { className: 'chevron', 'aria-hidden': 'true' })])]),
         el('div', { className: 'recap-body' }, [
           el('p', { text: '請現場調查員念出證物編號，在對的人面前「出示證物」，對方可能會改口，說出新的事。' }),
-          el('p', { text: '有些人要一步一步逼：先拆穿一句，下一句才鬆得動。證物跟他有關卻還沒到時候，他會露出一點反應，不扣信用。' }),
+          el('p', { text: '有些人要一步一步逼：先拆穿一句，下一句才鬆得動。對方看了證物只露出反應、不肯改口時，不扣信用；等你們拆穿了別的事，也許值得再拿出來試一次。' }),
           el('p', { text: '出示不相干的證物會扣「信用」。信用用光還是可以繼續，但結案評等會變差。' }),
           el('p', { text: '標著「證人」的人只說明自己看到的事；給證人看證物不會扣信用。' })
         ])
@@ -75,6 +78,9 @@
           return reveal(p, no, true);
         });
       }, Promise.resolve()).then(function () {
+        Object.keys(early[p.id] || {}).forEach(function (key) {
+          renderEarly(p, parseInt(key, 10), early[p.id][key], true);
+        });
         renderLog(p);
       });
     });
@@ -164,7 +170,7 @@
           return;
         }
         if ((presented[p.id] || []).indexOf(no) !== -1) {
-          feedback.textContent = '這件已經給' + p.name + '看過了，新的口供就在上面。';
+          feedback.textContent = (outcome[p.id] || {})[no] === 'react' ? reactFeedback(p, no) : '這件已經給' + p.name + '看過了，新的口供就在上面。';
           return;
         }
         button.disabled = true;
@@ -182,11 +188,9 @@
               return;
             }
             if (result && result.early) {
-              // 有關，但前一段還沒逼出來：給一句暗示，不扣信用、不記錄
+              // 有關，但前一段還沒逼出來：看起來就是一般的反應，不扣信用
               input.value = '';
-              feedback.className = 'present-feedback is-early';
-              feedback.appendChild(el('span', { className: 'deflect', text: result.early }));
-              feedback.appendChild(el('span', { className: 'deflect-note', text: '（有反應，但還不打算說。先從別的地方突破，再拿這件回來。沒有扣信用）' }));
+              feedback.textContent = reactFeedback(p, no);
               return;
             }
             if (result && result.same) {
@@ -198,7 +202,7 @@
             if (result && result.react) {
               // 有關但沒有改口：反應記在卡片上，不扣信用
               input.value = '';
-              feedback.textContent = p.name + '看了 No.' + pad(no) + '。反應記在上面了（沒有扣信用）。';
+              feedback.textContent = reactFeedback(p, no);
               return;
             }
             if (result) {
@@ -251,6 +255,9 @@
         var kind = (outcome[p.id] || {})[no];
         entries.push({ no: no, text: kind === 'react' ? '有反應' : '改口' });
       });
+      Object.keys(early[p.id] || {}).forEach(function (key) {
+        entries.push({ no: parseInt(key, 10), text: '有反應' });
+      });
       (tried[p.id] || []).forEach(function (no) {
         entries.push({ no: no, text: '沒鬆口' });
       });
@@ -266,7 +273,7 @@
     }
 
     // 試著用「人物＋證物編號」解開出示的結果。解不開回傳 false。解得開時：
-    //   前置的改口還沒逼出來 → { early: 暗示 }（不記錄）
+    //   前置的改口還沒逼出來 → { early: 暗示 }（像反應一樣記在卡片上，之後還能再出示）
     //   別件證物已經觸發過的同一段 → { same: true, first: 那件的編號 }
     //   反應 → { react: true }；新的改口 → true
     function reveal(p, no, silent, afterFinal) {
@@ -278,7 +285,15 @@
         var missing = (content.requires || []).filter(function (id) {
           return !box.querySelector('[data-break="' + id + '"]');
         });
-        if (missing.length) return { early: (content.earlyBy && content.earlyBy[missing[0]]) || content.early || p.name + '盯著這件東西看了一會兒，什麼也沒說。' };
+        if (missing.length) {
+          var hint = (content.earlyBy && content.earlyBy[missing[0]]) || content.early || { say: '……', observe: null };
+          early[p.id] = early[p.id] || {};
+          early[p.id][no] = hint;
+          progress.set('early', early);
+          renderEarly(p, no, hint, silent);
+          return { early: hint };
+        }
+        dropEarly(p, no);
         var list = presented[p.id] || [];
         if (list.indexOf(no) === -1) {
           list.push(no);
@@ -317,6 +332,33 @@
         if (!silent) Case.scrollIntoView(section);
         return true;
       });
+    }
+
+    // 還沒到時候的反應：跟一般反應長得一樣。同一件再出示時換成最新的那句
+    function renderEarly(p, no, hint, silent) {
+      var box = document.querySelector('[data-breaks-for="' + p.id + '"]');
+      var old = box.querySelector('section.react-note[data-early][data-evidence="' + no + '"]');
+      if (old) old.parentNode.removeChild(old);
+      box.appendChild(
+        el('section', { className: 'react-note' + (silent ? '' : ' is-new'), 'data-evidence': String(no), 'data-early': '1' }, [
+          el('p', { className: 'break-cause', text: causeText([String(no)]) }),
+          hint.say ? el('p', { className: 'react-say', text: hint.say }) : null,
+          hint.observe ? el('p', { className: 'reaction', text: hint.observe }) : null
+        ])
+      );
+    }
+
+    // 前置條件達成、真的改口或有反應了：拿掉先前那則還沒到時候的反應
+    function dropEarly(p, no) {
+      if (!early[p.id] || !early[p.id][no]) return;
+      delete early[p.id][no];
+      progress.set('early', early);
+      var old = document.querySelector('[data-breaks-for="' + p.id + '"] section.react-note[data-early][data-evidence="' + no + '"]');
+      if (old) old.parentNode.removeChild(old);
+    }
+
+    function reactFeedback(p, no) {
+      return p.name + '看了 No.' + pad(no) + '。反應記在上面了（沒有扣信用）。';
     }
 
     function renderCredibility() {
