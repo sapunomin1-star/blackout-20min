@@ -48,8 +48,8 @@
     app.appendChild(el('h2', { className: 'section-title', text: '選擇你的身分' }));
     app.appendChild(
       el('div', { className: 'roles' }, [
-        roleCard('scene.html', '我是現場調查員', '只看得到現場物品與證物編號', 'scene'),
-        roleCard('interrogation.html', '我是偵訊官', '只看得到口供，可以出示證物', 'interrogation')
+        roleCard('scene.html', ['我是', '現場調查員'], ['只看得到', '現場物品與', '證物編號'], 'scene'),
+        roleCard('interrogation.html', ['我是', '偵訊官'], ['只看得到口供，', '可以出示證物'], 'interrogation')
       ])
     );
 
@@ -86,6 +86,13 @@
     );
   });
 
+  // 窄螢幕只在詞與詞之間換行，不把「現場」「證物」拆開
+  function phrases(list) {
+    return list.map(function (text) {
+      return el('span', { className: 'nobr', text: text });
+    });
+  }
+
   function roleCard(href, name, desc, kind) {
     var icon =
       kind === 'scene'
@@ -95,8 +102,8 @@
     iconBox.innerHTML = icon;
     return el('a', { className: 'role-card', href: href }, [
       iconBox,
-      el('span', { className: 'role-name', text: name }),
-      el('span', { className: 'role-desc', text: desc }),
+      el('span', { className: 'role-name' }, phrases(name)),
+      el('span', { className: 'role-desc' }, phrases(desc)),
       el('span', { className: 'chevron', 'aria-hidden': 'true' })
     ]);
   }

@@ -87,6 +87,14 @@ async function noHScroll(page, label) {
   check(m.doc <= m.view && m.body <= m.view, `${label}：有水平捲動（內容寬 ${Math.max(m.doc, m.body)}，畫面 ${m.view}）`);
 }
 
+// 窄手機（320 寬）也不能水平捲動；量完換回原本的寬度
+async function narrowNoHScroll(page, label) {
+  const vp = page.viewportSize();
+  await page.setViewportSize({ width: 320, height: vp.height });
+  await noHScroll(page, `${label}（320 寬）`);
+  await page.setViewportSize(vp);
+}
+
 async function shot(page, name) {
   await page.evaluate(() => Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2000))]));
   await page.screenshot({ path: path.join(OUT, name + '.png'), fullPage: true });
@@ -441,6 +449,8 @@ async function playScene(page, base, entry, code) {
     await typeInto(page, page.locator(`.lock[data-no="${first.no}"] .lock-input`), first.kind === 'letters' ? wrong.replace(/\d/g, 'A') : wrong);
     await page.locator(`.lock[data-no="${first.no}"] .lock-submit`).click();
     await page.waitForFunction((no) => /沒有打開|沒有發生/.test(document.querySelector(`.lock[data-no="${no}"] .lock-message`).textContent), first.no);
+    // 鎖的輸入框不能把卡片撐出窄螢幕
+    await narrowNoHScroll(page, `${entry.id} 現場・打開的鎖`);
   }
   // 依序打開每一道鎖（密碼由 node 窮舉找出）
   for (const lock of locks) {
@@ -473,6 +483,7 @@ async function playScene(page, base, entry, code) {
     }
   }
   await noHScroll(page, `${entry.id} 現場`);
+  await narrowNoHScroll(page, `${entry.id} 現場`);
   return { items, locks };
 }
 
@@ -619,6 +630,7 @@ async function playInterrogation(page, base, entry, code) {
   check((await page.locator('section.react-note').count()) === seenReacts.size, `${entry.id} 重新整理後反應段數不對`);
   check((await page.locator('.credibility .dot.is-on').count()) === before - 1, `${entry.id} 重新整理後信用不對`);
   await noHScroll(page, `${entry.id} 偵訊`);
+  await narrowNoHScroll(page, `${entry.id} 偵訊`);
   return { payload, presents };
 }
 
@@ -665,6 +677,7 @@ async function playAccuse(page, base, entry, code) {
   if (expected.epilogue) check(text.includes(squash(expected.epilogue[0])), `${entry.id} 終章要有尾聲`);
   await page.waitForTimeout(2200);
   await noHScroll(page, `${entry.id} 結案`);
+  await narrowNoHScroll(page, `${entry.id} 結案`);
   return expected.next ? normalizeCode(await page.locator('.next-code .code-display').innerText()) : null;
 }
 
@@ -687,6 +700,7 @@ async function testCampaign(browser, ctxOptions, base) {
   await lockedCard.locator('.form-error').waitFor({ state: 'visible' });
   check((await lockedCard.locator('.form-error').innerText()).includes('不對'), '輸入錯的通行碼要提示不對');
   await noHScroll(B, '章節選單');
+  await narrowNoHScroll(B, '章節選單');
 
   let code = await solvePrologue(A, base);
   check(code && code.length === 6, '序章破案後要拿到第一章通行碼');
@@ -706,6 +720,7 @@ async function testCampaign(browser, ctxOptions, base) {
     await A.locator('.chapter-title').waitFor();
     check(squash(await A.locator('.chapter-title').innerText()) === squash(entry.title), `${entry.id} 簡報頁標題不對`);
     await noHScroll(A, `${entry.id} 簡報`);
+    await narrowNoHScroll(A, `${entry.id} 簡報`);
     await shot(A, `m-${entry.id}-1-brief`);
 
     await playScene(A, base, entry, code);
@@ -741,6 +756,7 @@ async function testCampaign(browser, ctxOptions, base) {
   await B.locator('.chapter-card').first().waitFor();
   check((await B.locator('#series-complete').count()) === 0, '另一支手機沒有破案紀錄，不該出現總結卡');
   await noHScroll(A, '全部結案的選單');
+  await narrowNoHScroll(A, '全部結案的選單');
   await shot(A, 'm-menu-complete');
   await ctxA.close();
   await ctxB.close();

@@ -36,7 +36,9 @@
     if (data.plan) app.appendChild(floorPlan(data.plan));
 
     var tabCols = data.rooms.length <= 5 ? data.rooms.length : Math.ceil(data.rooms.length / 2);
-    var tablist = el('div', { className: 'room-tabs', role: 'tablist', 'aria-label': '房間', style: '--tabs:' + tabCols });
+    // 最長的房間名稱有幾個字，樣式依此縮小分頁字級
+    var tabLen = data.rooms.reduce(function (n, room) { return Math.max(n, room.name.length); }, 2);
+    var tablist = el('div', { className: 'room-tabs', role: 'tablist', 'aria-label': '房間', style: '--tabs:' + tabCols + ';--tablen:' + tabLen });
     app.appendChild(tablist);
 
     data.rooms.forEach(function (room) {
