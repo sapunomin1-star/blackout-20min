@@ -1,4 +1,4 @@
-// 產生與驗證判定資料（js/secrets.js）。
+// 產生與驗證序章的判定資料（prologue/secrets.js）。
 // 這裡處理的機密原文只在記憶體裡；任何輸出都不能印出原文或正解。
 import { webcrypto, randomBytes, randomInt } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -73,9 +73,10 @@ export function normalizeInput(raw, options) {
   return { culprit, accepted, flaws, messages, truth };
 }
 
-/* ---------- 產生 js/secrets.js ---------- */
+/* ---------- 產生 prologue/secrets.js ---------- */
 
-export async function buildData(norm, options) {
+// next：破案後要給的下一章 { id, label, title, code, href }（沒有就 null）
+export async function buildData(norm, options, next = null) {
   const salt = hex(randomBytes(16));
   const payloads = options.suspects.map((s) => ({
     id: s.id,
@@ -99,7 +100,7 @@ export async function buildData(norm, options) {
   solved.sort();
   // 真相的金鑰由「嫌疑人＋破綻」推導，所以每句可接受的破綻各加密一份
   const truth = [];
-  for (const f of norm.flaws) truth.push(await seal('truth', salt, [norm.culprit, f], JSON.stringify({ t: norm.truth })));
+  for (const f of norm.flaws) truth.push(await seal('truth', salt, [norm.culprit, f], JSON.stringify({ t: norm.truth, n: next })));
   truth.sort((a, b) => (a.iv < b.iv ? -1 : 1));
   return { v: 1, salt, suspects, solved, truth };
 }
@@ -185,7 +186,9 @@ export function compareWithInput(answer, norm) {
 // 每次隨機挑兇手、證據、破綻與訊息，只用來測試判定機制，絕不代表真正的答案
 export function syntheticInput(options, { flawCount = 2 } = {}) {
   const pick = (list) => list[randomInt(list.length)];
-  const tag = () => randomBytes(4).toString('hex');
+  // 用中文字當隨機標記：純英數的片段可能剛好出現在十六進位密文裡，造成明文掃描誤判
+  const POOL = '甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥';
+  const tag = () => Array.from({ length: 8 }, () => POOL[randomInt(POOL.length)]).join('');
   const culprit = pick(options.suspects);
   const items = [...options.items];
   const accepted = [];

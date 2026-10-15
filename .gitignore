@@ -5,3 +5,6 @@ output/
 # 機密原文（答案、判定訊息、真相）：只能放在本機或 session 內，絕不進 git
 tools/secrets.local.json
 *.local.json
+
+# 新章節的原始內容（劇情、線索、答案）：只放本機，進 repo 的只有加密後的資料與加密封存檔
+*.local/

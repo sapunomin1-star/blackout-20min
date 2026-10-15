@@ -2,7 +2,9 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import path from 'node:path';
 
-export const PAGES = ['index.html', 'scene.html', 'interrogation.html', 'accuse.html'];
+// 序章的四頁（案件內容寫在 HTML 裡，逐字對照 docs/SPEC.md）
+export const PROLOGUE = 'prologue';
+export const PAGES = ['index.html', 'scene.html', 'interrogation.html', 'accuse.html'].map((p) => `${PROLOGUE}/${p}`);
 
 export function read(root, rel) {
   return readFileSync(path.join(root, rel), 'utf8');
@@ -49,20 +51,23 @@ export function publishedFiles(root) {
   });
 }
 
-// 一頁載入的本機檔（script src、stylesheet href）
+// 一頁載入的本機檔（script src、stylesheet href），回傳相對 repo 根目錄的路徑
 export function localAssets(root, page) {
   const html = read(root, page);
+  const dir = path.posix.dirname(page);
+  const resolve = (ref) => path.posix.normalize(path.posix.join(dir, ref));
+  const isLocal = (r) => !/^(https?:)?\/\//.test(r) && !r.startsWith('data:');
   const refs = [];
-  for (const m of html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)) refs.push(m[1]);
-  for (const m of html.matchAll(/<link\b[^>]*\brel="stylesheet"[^>]*\bhref="([^"]+)"/g)) refs.push(m[1]);
-  // accuse.js 會動態載入 js/secrets.js
-  for (const m of html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)) {
-    const js = path.join(root, m[1]);
-    if (!/^https?:/.test(m[1]) && existsSync(js)) {
-      for (const d of readFileSync(js, 'utf8').matchAll(/\.src\s*=\s*'([^']+\.js)'/g)) refs.push(d[1]);
+  for (const m of html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)) if (isLocal(m[1])) refs.push(resolve(m[1]));
+  for (const m of html.matchAll(/<link\b[^>]*\brel="stylesheet"[^>]*\bhref="([^"]+)"/g)) if (isLocal(m[1])) refs.push(resolve(m[1]));
+  // 頁面 JS 用 script.src = '…' 動態載入的檔（路徑相對於頁面）
+  for (const rel of [...refs]) {
+    const js = path.join(root, rel);
+    if (rel.endsWith('.js') && existsSync(js)) {
+      for (const d of readFileSync(js, 'utf8').matchAll(/\.src\s*=\s*'([^']+\.js)'/g)) refs.push(resolve(d[1]));
     }
   }
-  return [...new Set(refs.filter((r) => !/^(https?:)?\/\//.test(r) && !r.startsWith('data:')))];
+  return [...new Set(refs)];
 }
 
 // 去掉標籤與註解，還原常見實體，拿來比對畫面文字
@@ -81,7 +86,7 @@ export function htmlText(html) {
 
 // 指控頁的選項（ID 與顯示文字），是產生機密檔時的唯一 ID 來源
 export function accuseOptions(root) {
-  const html = read(root, 'accuse.html');
+  const html = read(root, `${PROLOGUE}/accuse.html`);
   const suspects = [...html.matchAll(/<input type="radio" name="suspect" value="([^"]+)">.*?<span class="opt-name">([^<]+)<\/span><span class="opt-role">([^<]+)<\/span>/g)].map(
     (m) => ({ id: m[1], name: m[2], role: m[3] })
   );

@@ -1,6 +1,7 @@
 // npm run check：只用 node 的全站檢查。
 //   內容逐字、角色隔離、共用檔不放案件內容、外部資源、Pages 發布範圍、
-//   判定窮舉（假資料一定跑；有 js/secrets.js 就再跑真資料）、明文答案掃描、機密檔沒進 git，
+//   判定窮舉（假資料一定跑；有 prologue/secrets.js 就再跑真資料）、新章節一路破關、明文答案掃描、
+//   機密檔與新章節原始內容沒進 git、新章節的加密封存，
 //   最後在暫存複本上做負向案例，確認上面的檢查真的抓得到問題。
 // 輸出絕不印出機密原文或正解。
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, cpSync, mkdirSync } from 'node:fs';
@@ -9,12 +10,15 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadSpec } from './lib/spec.mjs';
-import { PAGES, read, publishedFiles, localAssets, htmlText, accuseOptions, walk } from './lib/site.mjs';
+import { PAGES, PROLOGUE, read, publishedFiles, localAssets, htmlText, accuseOptions, walk } from './lib/site.mjs';
 import { buildSynthetic, loadVerdict, enumerate, compareWithInput, normalizeInput, syntheticInput, buildData, renderSecretsJs } from './lib/secrets.mjs';
+import { ROLES, loadSources, readManifest, readDataFile, openRole, verifyAgainstSources, sourceTexts, playthrough, validate as validateChapters } from './lib/chapters.mjs';
+import { SEALED_FILE, ITERATIONS, readSealed, readSources, openSealed, sameFiles } from './lib/sealed.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ALLOWED_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com', 'www.w3.org'];
-const GAME_FILE = /^([^/]+\.html|css\/[^/]+\.css|js\/[^/]+\.js)$/;
+// 會發布的只有遊戲檔：根目錄的 HTML／JS、序章與各章資料夾裡的 HTML／JS、css/、js/
+const GAME_FILE = /^([^/]+\.(html|js)|(prologue|ch\d+)\/[^/]+\.(html|js)|css\/[^/]+\.css|js\/[^/]+\.js)$/;
 
 function windows(text, n) {
   const out = new Set();
@@ -57,9 +61,10 @@ export async function runChecks(root, { useGit = true } = {}) {
         fail(cat, msg);
       }
     };
-    need(htmlText(read(root, 'index.html')).includes(spec.preface), 'index.html 沒有逐字的案件前言');
+    const P = (name) => `${PROLOGUE}/${name}`;
+    need(htmlText(read(root, P('index.html'))).includes(spec.preface), '序章首頁沒有逐字的案件前言');
 
-    const scene = read(root, 'scene.html');
+    const scene = read(root, P('scene.html'));
     for (const item of spec.items) {
       const found = scene.split('<details class="item').find((b) => b.includes(`data-item="${item.id}"`));
       const block = found ? [found] : null;
@@ -76,7 +81,7 @@ export async function runChecks(root, { useGit = true } = {}) {
     }
     need(!htmlText(scene).includes('後才顯示'), 'scene.html 顯示了互動說明文字');
 
-    const inter = read(root, 'interrogation.html');
+    const inter = read(root, P('interrogation.html'));
     for (const s of spec.suspects) {
       const m = inter.match(new RegExp(`<article class="paper suspect" id="suspect-${s.id}"[\\s\\S]*?</article>`));
       const block = m ? m[0] : '';
@@ -96,7 +101,7 @@ export async function runChecks(root, { useGit = true } = {}) {
     need(JSON.stringify(opts.suspects.map((s) => [s.id, s.name, s.role])) === JSON.stringify(spec.suspects.map((s) => [s.id, s.name, s.role])), 'accuse.html 的嫌疑人選項和規格不一致');
     need(JSON.stringify(opts.items.map((i) => [i.id, i.text, i.group])) === JSON.stringify(spec.items.map((i) => [i.id, i.name, i.roomName])), 'accuse.html 的現場證據選項和規格不一致（要依房間分組、只列名稱）');
     need(JSON.stringify(opts.statements.map((s) => [s.id, s.text])) === JSON.stringify(spec.statements.map((s) => [s.id, s.text])), 'accuse.html 的口供句選項和規格不一致（一句一個選項）');
-    const accuseText = htmlText(read(root, 'accuse.html'));
+    const accuseText = htmlText(read(root, P('accuse.html')));
     for (const item of spec.items) need(!accuseText.includes(item.desc), `accuse.html 不該列出「${item.name}」的描述`);
     if (!bad) pass(cat, `首頁前言、10 件物品、4 位嫌疑人的口供／追問／回答／觀察反應、指控頁 4＋10＋12 個選項都和規格逐字相同`);
   }
@@ -119,8 +124,8 @@ export async function runChecks(root, { useGit = true } = {}) {
         }
       }
     };
-    scan('scene.html', testimonyFrags, '口供');
-    scan('interrogation.html', sceneFrags, '現場物品描述');
+    scan(`${PROLOGUE}/scene.html`, testimonyFrags, '口供');
+    scan(`${PROLOGUE}/interrogation.html`, sceneFrags, '現場物品描述');
 
     // 共用檔：被兩頁以上載入的本機檔，不能有任何案件內容
     const usage = new Map();
@@ -196,7 +201,7 @@ export async function runChecks(root, { useGit = true } = {}) {
         fail(cat, `${page} 缺少手機 viewport 或繁體中文 lang`);
       }
       for (const rel of localAssets(root, page)) {
-        if (rel !== 'js/secrets.js' && !existsSync(path.join(root, rel))) {
+        if (rel !== `${PROLOGUE}/secrets.js` && !existsSync(path.join(root, rel))) {
           bad += 1;
           fail(cat, `${page} 載入的 ${rel} 不存在`);
         }
@@ -210,7 +215,7 @@ export async function runChecks(root, { useGit = true } = {}) {
   }
 
   /* ---------- 4. 判定 ---------- */
-  const secretsPath = path.join(root, 'js', 'secrets.js');
+  const secretsPath = path.join(root, PROLOGUE, 'secrets.js');
   const localPath = path.join(root, 'tools', 'secrets.local.json');
   const options = accuseOptions(root);
   // 假資料：可接受的破綻一句、兩句各測一次
@@ -224,6 +229,7 @@ export async function runChecks(root, { useGit = true } = {}) {
   }
 
   let secretTexts = null;
+  let firstChapterCode = null;
   if (existsSync(secretsPath)) {
     const cat = '判定窮舉';
     const js = readFileSync(secretsPath, 'utf8');
@@ -234,16 +240,20 @@ export async function runChecks(root, { useGit = true } = {}) {
       const sorted = data.suspects.every((s, i, a) => i === 0 || a[i - 1].i < s.i);
       const ids = [...options.suspects, ...options.items, ...options.statements].map((o) => o.id);
       const leakedId = ids.find((id) => new RegExp(`["']${id}["']`).test(js.replace(/^\/\*[\s\S]*?\*\//, '')));
-      if (data.suspects.length !== options.suspects.length) fail(cat, 'js/secrets.js 的嫌疑人筆數不對');
-      else if (lens.size !== 1) fail(cat, 'js/secrets.js 四筆嫌疑人密文長度不同，可能看得出誰是兇手');
-      else if (!sorted) fail(cat, 'js/secrets.js 的嫌疑人資料沒有依雜湊排序');
-      else if (leakedId) fail(cat, `js/secrets.js 出現明文選項 ID「${leakedId}」`);
-      else pass(cat, 'js/secrets.js 只有鹽、雜湊與密文：四筆密文等長、依雜湊排序');
+      if (data.suspects.length !== options.suspects.length) fail(cat, 'prologue/secrets.js 的嫌疑人筆數不對');
+      else if (lens.size !== 1) fail(cat, 'prologue/secrets.js 四筆嫌疑人密文長度不同，可能看得出誰是兇手');
+      else if (!sorted) fail(cat, 'prologue/secrets.js 的嫌疑人資料沒有依雜湊排序');
+      else if (leakedId) fail(cat, `prologue/secrets.js 出現明文選項 ID「${leakedId}」`);
+      else pass(cat, 'prologue/secrets.js 只有鹽、雜湊與密文：四筆密文等長、依雜湊排序');
 
       const r = await enumerate(runner, options);
       if (r.problems.length) fail(cat, `真資料：${r.problems.join('；')}`);
       else pass(cat, `真資料：窮舉 ${r.total} 種組合，剛好一人走兇手路徑、${r.solvedCount} 組全對（${r.evidenceCount} 件證據 × ${r.flawCount} 句破綻的完整組合），其他三人都回自己的訊息`);
       secretTexts = [...Object.values(r.answer.messages), r.answer.truth].filter(Boolean);
+      if (r.answer.culprit) {
+        const solvedRun = await runner.judge({ suspect: r.answer.culprit, evidence: r.answer.accepted[0], flaw: r.answer.flaws[0] });
+        firstChapterCode = solvedRun.next ? solvedRun.next.code : null;
+      }
 
       if (existsSync(localPath)) {
         try {
@@ -258,22 +268,117 @@ export async function runChecks(root, { useGit = true } = {}) {
         warn(cat, '沒有 tools/secrets.local.json，略過「解密結果與機密原文逐字比對」（雲端 session 結束後這個檔就不在了，屬正常）');
       }
     } catch (err) {
-      fail(cat, 'js/secrets.js 無法判定：' + err.message);
+      fail(cat, 'prologue/secrets.js 無法判定：' + err.message);
     }
   } else {
-    warn('判定窮舉', '還沒有 js/secrets.js：遊戲目前不能判定指控。請使用者貼上機密段，整理成 tools/secrets.local.json 後執行 npm run build:secrets');
-    if (existsSync(localPath)) warn('判定窮舉', '已有 tools/secrets.local.json，但還沒產生 js/secrets.js');
+    warn('判定窮舉', '還沒有 prologue/secrets.js：序章目前不能判定指控。請使用者貼上機密段，整理成 tools/secrets.local.json 後執行 npm run build:secrets');
+    if (existsSync(localPath)) warn('判定窮舉', '已有 tools/secrets.local.json，但還沒產生 prologue/secrets.js');
+  }
+
+  /* ---------- 4b. 新章節 ---------- */
+  const manifest = readManifest(root);
+  const sources = loadSources(root);
+  const chapterSecretTexts = [];
+  const chapterPublicTexts = [];
+  if (!manifest) {
+    warn('新章節', '還沒有 chapters.js（npm run build:chapters）');
+  } else {
+    const cat = '新章節';
+    let bad = 0;
+    const chapters = manifest.chapters.filter((c) => !c.open);
+    // 結構：每章四個頁面外殼＋四個加密資料檔；外殼只載入共用引擎和自己的資料
+    for (const entry of manifest.chapters) chapterPublicTexts.push(entry.label, entry.title, entry.teaser);
+    for (const entry of chapters) {
+      for (const role of ROLES) {
+        const page = `${entry.id}/${role === 'brief' ? 'index' : role}.html`;
+        if (!existsSync(path.join(root, page))) {
+          bad += 1;
+          fail(cat, `缺少 ${page}`);
+          continue;
+        }
+        const assets = localAssets(root, page);
+        const want = ['js/case.js', `${entry.id}/${role}.data.js`, `js/case-${role}.js`, 'css/style.css'].sort();
+        if (JSON.stringify(assets.slice().sort()) !== JSON.stringify(want)) {
+          bad += 1;
+          fail(cat, `${page} 載入了不該載入的檔案：${assets.join('、')}`);
+        }
+        const data = readDataFile(root, entry.id, role);
+        const keys = Object.keys(data).sort().join(',');
+        if (keys !== 'box,chapter,role,salt,v' || data.chapter !== entry.id || data.role !== role || data.salt !== entry.salt) {
+          bad += 1;
+          fail(cat, `${entry.id}/${role}.data.js 的格式不對（只能有鹽與密文）`);
+        }
+      }
+    }
+    // 一路破關：只用序章給的通行碼和已發布的檔案，窮舉每一章的指控，確認每章都破得了、通行碼一路接得上
+    if (firstChapterCode) {
+      const steps = await playthrough(root, firstChapterCode);
+      const broken = steps.find((st) => !st.ok);
+      const last = steps[steps.length - 1];
+      if (broken) {
+        bad += 1;
+        fail(cat, `${broken.id} 破不了：${broken.error || '判定失敗'}`);
+      } else if (steps.length !== chapters.length || !last || last.next || !last.hasEpilogue) {
+        bad += 1;
+        fail(cat, '章節沒有一路接到終章的尾聲');
+      } else {
+        pass(cat, `只用已發布的檔案就能從序章一路破到終章：${steps.map((st) => `${st.id}（窮舉 ${st.total.toLocaleString()} 種、全對 ${st.solved} 組）`).join(' → ')}`);
+      }
+    } else {
+      warn(cat, '沒有序章判定資料，略過「從序章一路破關」的檢查');
+    }
+    // 和原始內容比對、角色隔離（需要 tools/chapters.local/）
+    if (sources) {
+      const problems = validateChapters(sources);
+      const { problems: verifyProblems } = await verifyAgainstSources(root, sources);
+      for (const p of [...problems, ...verifyProblems]) {
+        bad += 1;
+        fail(cat, p);
+      }
+      if (!problems.length && !verifyProblems.length) pass(cat, `已發布的 ${sources.length} 章和原始內容一致：每道鎖只有一組密碼、出示證物的組合正確、只有正解能破案`);
+      const iso = '角色隔離';
+      let isoBad = 0;
+      for (const ch of sources) {
+        const texts = sourceTexts(ch);
+        chapterSecretTexts.push(...texts.scene, ...texts.interrogation, ...texts.shared);
+        const sceneJson = JSON.stringify((await openRole(root, ch.id, 'scene', ch.code)).payload);
+        const interJson = JSON.stringify((await openRole(root, ch.id, 'interrogation', ch.code)).payload);
+        const testimonyFrags = new Set(texts.interrogation.flatMap((t) => [...windows(t, 6)]));
+        const sceneFrags = new Set(texts.scene.flatMap((t) => [...windows(t, 6)]));
+        const leakA = firstHit(testimonyFrags, sceneJson);
+        const leakB = firstHit(sceneFrags, interJson);
+        if (leakA) {
+          isoBad += 1;
+          fail(iso, `${ch.id} 的現場資料裡出現口供片段（為了不劇透，不印出內容）`);
+        }
+        if (leakB) {
+          isoBad += 1;
+          fail(iso, `${ch.id} 的偵訊資料裡出現現場物品描述的片段（不印出內容）`);
+        }
+      }
+      if (!isoBad) pass(iso, `新章節解密後檢查：${sources.length} 章的現場資料不含口供，偵訊資料不含物品描述`);
+      // 共用的引擎、樣式與選單不能提到任何新章節的人物
+      const sharedFiles = published.filter((rel) => /^(js\/[^/]+\.js|css\/[^/]+\.css|index\.html)$/.test(rel));
+      const names = [...new Set(sources.flatMap((ch) => ch.interrogation.people.map((p) => p.name)))].filter((n) => [...n].length >= 2);
+      const named = sharedFiles.filter((rel) => names.some((n) => read(root, rel).includes(n)));
+      if (named.length) fail(iso, `共用檔 ${named.join('、')} 出現新章節的人物名字（不印出是誰）`);
+      else pass(iso, `${sharedFiles.length} 個共用檔（引擎、樣式、選單）都沒有新章節的人物名字`);
+    } else {
+      warn(cat, '沒有 tools/chapters.local/（新章節的原始內容），略過和原始內容的比對與隔離檢查。需要時用 npm run chapters:unseal 還原');
+    }
+    if (!bad && !sources) pass(cat, `${chapters.length} 章的頁面與加密資料結構正確`);
   }
 
   /* ---------- 5. 明文答案掃描 ---------- */
   {
     const cat = '明文掃描';
-    if (!secretTexts) {
+    const allSecret = [...(secretTexts || []), ...chapterSecretTexts];
+    if (!allSecret.length) {
       warn(cat, '沒有判定資料可解密，略過明文掃描（假資料的掃描在自我測試裡驗證）');
     } else {
-      const specText = read(root, 'docs/SPEC.md');
+      const specText = read(root, 'docs/SPEC.md') + '\n' + chapterPublicTexts.join('\n');
       const frags = new Set();
-      for (const t of secretTexts) for (const w of windows(t, 6)) if (!specText.includes(w)) frags.add(w);
+      for (const t of allSecret) for (const w of windows(t, 6)) if (!specText.includes(w)) frags.add(w);
       const targets = new Map();
       for (const rel of published) targets.set(rel, haystack(root, rel));
       if (useGit) {
@@ -316,6 +421,55 @@ export async function runChecks(root, { useGit = true } = {}) {
     else if (!ignored) fail(cat, `${rel} 沒有被 .gitignore 擋住`);
     else if (inHistory) fail(cat, `${rel} 曾經進過 git 歷史！告訴使用者，不要自己改寫歷史`);
     else pass(cat, `${rel} 沒被追蹤、已被 .gitignore 擋住、也不在 git 歷史裡`);
+
+    // 新章節的原始內容（劇透）同樣只能在本機
+    const dir = 'tools/chapters.local';
+    const probe = `${dir}/ch1.json`;
+    const trackedLocal = git(root, ['ls-files', '--', dir]).trim();
+    let ignoredLocal = true;
+    try {
+      git(root, ['check-ignore', '-q', '--no-index', probe]);
+    } catch {
+      ignoredLocal = false;
+    }
+    const localHistory = git(root, ['log', '--all', '--format=%H', '--', dir]).trim();
+    if (trackedLocal) fail(cat, `${dir}/ 有檔案被 git 追蹤了！先別 push，告訴使用者`);
+    else if (!ignoredLocal) fail(cat, `${dir}/ 沒有被 .gitignore 擋住`);
+    else if (localHistory) fail(cat, `${dir}/ 曾經進過 git 歷史！告訴使用者，不要自己改寫歷史`);
+    else pass(cat, `${dir}/ 沒被追蹤、已被 .gitignore 擋住、也不在 git 歷史裡`);
+  }
+
+  /* ---------- 7. 新章節原始內容的加密封存 ---------- */
+  {
+    const cat = '封存備份';
+    const box = readSealed(root);
+    const local = readSources(root);
+    if (!box) {
+      if (local) fail(cat, `本機有新章節原始內容，但還沒封存成 ${SEALED_FILE}（跑 npm run chapters:seal）`);
+    } else {
+      const shapeOk =
+        box.v === 1 &&
+        box.kdf === 'PBKDF2-SHA256' &&
+        box.cipher === 'AES-GCM' &&
+        box.iterations >= ITERATIONS &&
+        /^[0-9a-f]{32}$/.test(box.salt) &&
+        /^[0-9a-f]{24}$/.test(box.iv) &&
+        /^[0-9a-f]+$/.test(box.c) &&
+        Object.keys(box).sort().join() === 'c,cipher,iterations,iv,kdf,salt,v';
+      if (!shapeOk) fail(cat, `${SEALED_FILE} 的格式不對`);
+      else if (!process.env.CHAPTERS_PASSPHRASE) warn(cat, `${SEALED_FILE} 格式正確；沒有提供 CHAPTERS_PASSPHRASE，略過內容比對`);
+      else {
+        let files = null;
+        try {
+          files = await openSealed(box, process.env.CHAPTERS_PASSPHRASE);
+        } catch {
+          fail(cat, `CHAPTERS_PASSPHRASE 打不開 ${SEALED_FILE}`);
+        }
+        if (files && !local) pass(cat, `${SEALED_FILE} 解得開（${Object.keys(files).length} 個檔）；本機沒有原始內容可比對`);
+        else if (files && !sameFiles(files, local)) fail(cat, `${SEALED_FILE} 和本機原始內容不同（改完內容要重跑 npm run chapters:seal）`);
+        else if (files) pass(cat, `${SEALED_FILE} 解得開，內容和本機原始內容逐字相同（${Object.keys(files).length} 個檔）`);
+      }
+    }
   }
 
   return results;
@@ -329,7 +483,7 @@ async function selfTest() {
   try {
     const copy = () => {
       const dir = mkdtempSync(path.join(tmp, 'case-'));
-      for (const rel of walk(ROOT).filter((r) => !/^(node_modules|output)\//.test(r) && r !== 'tools/secrets.local.json' && r !== 'js/secrets.js')) {
+      for (const rel of walk(ROOT).filter((r) => !/^(node_modules|output)\//.test(r) && !/\.local(\.json|\/)/.test(r) && r !== `${PROLOGUE}/secrets.js`)) {
         mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
         cpSync(path.join(ROOT, rel), path.join(dir, rel));
       }
@@ -348,11 +502,11 @@ async function selfTest() {
     };
 
     let dir = copy();
-    inject(dir, 'scene.html', spec.suspects[3].statements[1].text);
+    inject(dir, `${PROLOGUE}/scene.html`, spec.suspects[3].statements[1].text);
     await expect('scene.html 放一句口供', dir, '角色隔離');
 
     dir = copy();
-    inject(dir, 'interrogation.html', spec.items[0].desc);
+    inject(dir, `${PROLOGUE}/interrogation.html`, spec.items[0].desc);
     await expect('interrogation.html 放一段物品描述', dir, '角色隔離');
 
     dir = copy();
@@ -360,7 +514,7 @@ async function selfTest() {
     await expect('共用 JS 放案件內容', dir, '角色隔離');
 
     dir = copy();
-    inject(dir, 'index.html', '<img src="https://example.com/a.png" alt="">');
+    inject(dir, `${PROLOGUE}/index.html`, '<img src="https://example.com/a.png" alt="">');
     await expect('放外部圖片', dir, '外部資源');
 
     dir = copy();
@@ -370,17 +524,17 @@ async function selfTest() {
     dir = copy();
     const raw = syntheticInput(options);
     const norm = normalizeInput(raw, options);
-    writeFileSync(path.join(dir, 'js', 'secrets.js'), renderSecretsJs(await buildData(norm, options)));
+    writeFileSync(path.join(dir, PROLOGUE, 'secrets.js'), renderSecretsJs(await buildData(norm, options)));
     writeFileSync(path.join(dir, 'tools', 'secrets.local.json'), JSON.stringify(raw));
     const clean = await runChecks(dir, { useGit: false });
-    out.push({ name: '假機密資料本身應該全部通過', caught: !clean.some((r) => r.level === 'fail') });
-    inject(dir, 'accuse.html', norm.truth.split('\n')[0]);
+    out.push({ name: '對照組：乾淨的假機密資料', caught: !clean.some((r) => r.level === 'fail'), ok: '沒有誤報', bad: '出現誤報！' });
+    inject(dir, `${PROLOGUE}/accuse.html`, norm.truth.split('\n')[0]);
     await expect('任一頁放一段真相', dir, '明文掃描');
 
     dir = copy();
     writeFileSync(path.join(dir, 'tools', 'secrets.local.json'), JSON.stringify(raw));
     const other = normalizeInput(syntheticInput(options), options);
-    writeFileSync(path.join(dir, 'js', 'secrets.js'), renderSecretsJs(await buildData(other, options)));
+    writeFileSync(path.join(dir, PROLOGUE, 'secrets.js'), renderSecretsJs(await buildData(other, options)));
     await expect('判定資料和機密檔不一致', dir, '判定窮舉');
   } finally {
     rmSync(tmp, { recursive: true, force: true });
@@ -393,16 +547,15 @@ async function selfTest() {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const icon = { pass: '✓', fail: '✗', warn: '⚠' };
   const results = await runChecks(ROOT, { useGit: existsSync(path.join(ROOT, '.git')) });
-  let lastCat = null;
-  for (const r of results) {
-    if (r.cat !== lastCat) console.log(`\n【${r.cat}】`);
-    lastCat = r.cat;
-    console.log(`  ${icon[r.level]} ${r.msg}`);
+  // 依類別第一次出現的順序分組印出
+  for (const cat of [...new Set(results.map((r) => r.cat))]) {
+    console.log(`\n【${cat}】`);
+    for (const r of results.filter((x) => x.cat === cat)) console.log(`  ${icon[r.level]} ${r.msg}`);
   }
 
   console.log('\n【自我測試：負向案例】');
   const st = await selfTest();
-  for (const c of st) console.log(`  ${c.caught ? '✓' : '✗'} ${c.name}${c.caught ? '：有抓到' : '：沒抓到！'}`);
+  for (const c of st) console.log(`  ${c.caught ? '✓' : '✗'} ${c.name}：${c.caught ? c.ok || '有抓到' : c.bad || '沒抓到！'}`);
 
   const failed = results.filter((r) => r.level === 'fail').length + st.filter((c) => !c.caught).length;
   const warned = results.filter((r) => r.level === 'warn').length;

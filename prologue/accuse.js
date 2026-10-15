@@ -1,6 +1,6 @@
 /*
  * 指控頁的互動：開場確認、三個欄位、送出判定、顯示結果。
- * 選項文字都寫在 accuse.html；答案不在這裡，判定交給 js/verdict.js 和 js/secrets.js。
+ * 選項文字都寫在 accuse.html；答案不在這裡，判定交給 js/verdict.js 和 prologue/secrets.js。
  */
 (function () {
   'use strict';
@@ -27,7 +27,7 @@
 
   function loadSecrets() {
     var script = document.createElement('script');
-    script.src = 'js/secrets.js';
+    script.src = 'secrets.js';
     script.onload = function () {
       dataState = window.BLACKOUT_SECRETS ? 'ready' : 'missing';
     };
@@ -188,6 +188,8 @@
     verdictTitle.textContent = solved ? '真相' : '判定';
     verdictText.className = 'verdict-text' + (solved ? ' truth' : '');
     renderParagraphs(verdictText, result.text);
+    if (solved) remember(result);
+    renderNext(solved ? result.next : null);
     retry.hidden = solved;
     homeLink.hidden = !solved;
     form.hidden = solved;
@@ -200,6 +202,30 @@
     }
     verdict.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
     verdictTitle.focus({ preventScroll: true });
+  }
+
+  // 破案紀錄存在這支手機：章節選單會顯示「結案」，下一章自動解鎖
+  function remember(result) {
+    try {
+      window.localStorage.setItem('blackout20:solved:prologue', 'true');
+      window.localStorage.setItem('blackout20:archive:prologue', JSON.stringify({ label: '序章', title: '停電的二十分鐘', t: [result.text] }));
+      if (result.next) window.localStorage.setItem('blackout20:code:' + result.next.id, JSON.stringify(result.next.code));
+    } catch (e) {
+      /* 存不了就算了 */
+    }
+  }
+
+  function renderNext(next) {
+    var box = document.getElementById('next-code');
+    if (!box) return;
+    box.hidden = !next;
+    if (!next) return;
+    var code = String(next.code);
+    box.querySelector('.next-label').textContent = next.label + '通行碼';
+    box.querySelector('.code-display').textContent = code.length === 6 ? code.slice(0, 3) + '-' + code.slice(3) : code;
+    var link = box.querySelector('.next-link');
+    link.href = next.href;
+    link.textContent = '前往' + next.label + '：' + next.title;
   }
 
   function waitForData() {
@@ -240,7 +266,7 @@
       .then(showVerdict)
       .catch(function (err) {
         if (err && err.message === 'missing') {
-          showError('判定資料尚未建立（找不到 js/secrets.js），目前還不能判定。', null);
+          showError('判定資料尚未建立（找不到 secrets.js），目前還不能判定。', null);
         } else {
           showError('判定時發生錯誤，請重新整理頁面再試一次。', null);
         }
