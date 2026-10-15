@@ -2736,3 +2736,35 @@ body.theme-finale {
   line-height: 1.8;
   resize: vertical;
 }
+
+/* ---------- 分享成績 ---------- */
+
+.share {
+  margin-top: 16px;
+}
+
+.share-status {
+  margin-top: 8px;
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+  text-align: center;
+}
+
+.share-status p {
+  margin: 0 0 8px;
+}
+
+.share-text {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(87, 70, 52, 0.6);
+  border-radius: var(--radius);
+  color: var(--ink);
+  background: #fffaf0;
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  line-height: 1.7;
+  resize: none;
+}

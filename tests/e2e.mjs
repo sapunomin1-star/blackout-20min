@@ -697,6 +697,13 @@ async function playAccuse(page, base, entry, code) {
   const text = await fillAccuse(page, payload, solved[0]);
   check(text.includes('破案') && text.includes(squash(expected.t[0])), `${entry.id} 全對時要破案並顯示真相`);
   check(/用時：約\d+分鐘/.test(squash(await page.locator('.rating-list').innerText())), `${entry.id} 破案評等要列出用時`);
+  // 分享成績：測試瀏覽器沒有手機的分享選單，走剪貼簿；內容只有章名、星等、數字與網址，不能有任何人名
+  await page.locator('.share-button').click();
+  await page.locator('.share-status').filter({ hasText: '已複製' }).waitFor({ timeout: 5000 });
+  const shared = await page.evaluate(() => navigator.clipboard.readText());
+  const stars = (await page.locator('.verdict-card .rating-stars').innerText()).trim();
+  check(shared.includes(`${entry.label}《${entry.title}》破案 ${stars}`) && /用時約\d+分鐘/.test(squash(shared)) && shared.includes(base), `${entry.id} 分享的成績要有章名、星等、用時與遊戲網址`);
+  check((payload.people || []).every((p) => !shared.includes(p.name)) && !squash(shared).includes(squash(expected.t[0]).slice(0, 10)), `${entry.id} 分享的成績不能透露案情或人名`);
   if (expected.epilogue) check(text.includes(squash(expected.epilogue[0])), `${entry.id} 終章要有尾聲`);
   await page.waitForTimeout(2200);
   await noHScroll(page, `${entry.id} 結案`);
@@ -708,6 +715,8 @@ async function testCampaign(browser, ctxOptions, base) {
   step('新章節：兩支手機從序章一路破到終章');
   const manifest = readManifest(ROOT);
   const ctxA = await browser.newContext(ctxOptions);
+  // 破案後的「分享成績」會寫入剪貼簿
+  await ctxA.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(base).origin });
   const ctxB = await browser.newContext(ctxOptions);
   const A = await ctxA.newPage();
   const B = await ctxB.newPage();
