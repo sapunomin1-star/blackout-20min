@@ -85,7 +85,10 @@ select {
 
 /* 紙張上的焦點框改用深紅：淺黃在米色紙上幾乎看不見。
    卡片標題列的框畫在卡片外的深色背景上，維持淺黃。 */
-.paper :focus-visible,
+.paper :focus-visible {
+  outline-color: var(--oxblood);
+}
+
 .paper .opt:has(input:focus-visible),
 .paper .suspect-option:has(input:focus-visible) {
   outline-color: var(--oxblood);
@@ -299,7 +302,10 @@ h3,
 .paper::before {
   content: "";
   position: absolute;
-  inset: 7px;
+  top: 7px;
+  right: 7px;
+  bottom: 7px;
+  left: 7px;
   border: 1px solid rgba(110, 85, 50, 0.22);
   border-radius: 3px;
   pointer-events: none;
@@ -1365,11 +1371,21 @@ details[open] > summary .chevron {
   background: rgba(201, 161, 95, 0.16);
 }
 
+/* 選取狀態：:has() 和 JS 加上的 .is-checked 分開寫。
+   寫在同一個選擇器清單裡時，不支援 :has() 的瀏覽器會把整條規則丟掉，備援也跟著失效。 */
 .opt:has(input:checked) {
   background: rgba(142, 35, 35, 0.1);
 }
 
-.opt:has(input:checked)::before,
+.opt.is-checked {
+  background: rgba(142, 35, 35, 0.1);
+}
+
+.opt:has(input:checked)::before {
+  border-color: var(--oxblood);
+  background: radial-gradient(circle, var(--oxblood) 0 42%, #fff 46%);
+}
+
 .opt.is-checked::before {
   border-color: var(--oxblood);
   background: radial-gradient(circle, var(--oxblood) 0 42%, #fff 46%);
@@ -1464,7 +1480,10 @@ details[open] > summary .chevron {
 
 .lights {
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   z-index: 50;
   background: #000;
   pointer-events: none;
@@ -2362,8 +2381,12 @@ body.theme-finale {
   background: rgba(255, 255, 255, 0.4);
 }
 
-.choice.is-checked,
 .choice:has(input:checked) {
+  border-color: var(--oxblood);
+  background: rgba(142, 35, 35, 0.08);
+}
+
+.choice.is-checked {
   border-color: var(--oxblood);
   background: rgba(142, 35, 35, 0.08);
 }
@@ -2636,6 +2659,20 @@ body.theme-finale {
   border: 0;
   background: transparent;
   overflow: visible;
+}
+
+/* 不支援 <dialog> 的舊瀏覽器靠 open 屬性顯示或隱藏；支援的瀏覽器本來就是這樣排 */
+.notebook:not([open]) {
+  display: none;
+}
+
+.notebook[open] {
+  display: block;
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 100;
 }
 
 .notebook::backdrop {

@@ -59,6 +59,17 @@ npm run serve        # http://localhost:8000
 
 兩支手機要一起玩，請用 Pages 的 https 網址。
 
+## 支援的瀏覽器
+
+- 目標：iOS／iPadOS 15 以上的 Safari，以及近兩年的 Chrome、Edge、Firefox、Samsung Internet。
+- 較新的樣式在舊瀏覽器會退回一般樣式，遊戲照常能玩。例如：
+  - 分頁字級自動縮放；
+  - 標題平均折行；
+  - 用 `:has()` 標示選取狀態，沒有時由 JS 加上 class 代替；
+  - 用 `<dialog>` 做的筆記本，沒有時改用一般的顯示與隱藏。
+- e2e 目前只在 Chromium 上跑。對 Safari 的支援，是逐項比對所用功能的支援版本，還沒有在 WebKit 上實測。
+- 雲端環境要在網路設定允許 `cdn.playwright.dev`，才能下載 WebKit 來測。
+
 ## 檔案結構
 
 ```
