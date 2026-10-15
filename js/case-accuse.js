@@ -241,7 +241,7 @@
       var grade = rating();
       progress.set('solved', true);
       Case.save('solved:' + data.chapter.id, true);
-      Case.save('archive:' + data.chapter.id, { label: data.chapter.label, title: data.chapter.title, t: truth.t, score: grade.score });
+      Case.save('archive:' + data.chapter.id, { label: data.chapter.label, title: data.chapter.title, t: truth.t, score: grade.score, minutes: grade.minutes });
       if (truth.next) Case.saveCode(truth.next.id, truth.next.code);
 
       card.appendChild(el('span', { className: 'stamp solved-stamp', text: '破案' }));
@@ -266,6 +266,23 @@
       card.appendChild(el('div', { className: 'verdict-actions' }, [el('a', { className: 'btn btn-ghost', href: '../index.html', text: '回章節選單' })]));
     }
 
+    // 用時：從這支手機第一次打開本章到第一次破案，之後再破案也不會變
+    function elapsedMinutes() {
+      var kept = progress.get('minutes', null);
+      if (kept !== null) return kept;
+      var started = progress.get('startedAt', 0);
+      if (!started) return null;
+      var minutes = Math.max(1, Math.round((Date.now() - started) / 60000));
+      progress.set('minutes', minutes);
+      return minutes;
+    }
+
+    function formatMinutes(m) {
+      if (m > 720) return '超過 12 小時（中間休息過）';
+      if (m < 60) return '約 ' + m + ' 分鐘';
+      return '約 ' + Math.floor(m / 60) + ' 小時' + (m % 60 ? ' ' + (m % 60) + ' 分' : '');
+    }
+
     function rating() {
       var attempts = progress.get('attempts', 1);
       var hints = progress.get('hints', {});
@@ -282,8 +299,11 @@
       var stars = '★★★'.slice(0, score) + '☆☆☆'.slice(0, 3 - score);
       var rows = [el('li', { text: '指控次數：' + attempts }), el('li', { text: '看過的提示：' + hintCount + ' 層' })];
       if (credibility !== null) rows.push(el('li', { text: '剩下的信用：' + credibility }));
+      var minutes = elapsedMinutes();
+      if (minutes !== null) rows.push(el('li', { text: '用時：' + formatMinutes(minutes) }));
       return {
         score: score,
+        minutes: minutes,
         node: el('div', { className: 'rating' }, [
           el('p', { className: 'label', text: '破案評等（這支手機的紀錄）' }),
           el('p', { className: 'rating-stars', 'aria-label': score + ' 顆星', text: stars }),

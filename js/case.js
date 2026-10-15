@@ -320,6 +320,8 @@
       openIndexed: openIndexed
     };
     var start = function (payload) {
+      // 破案用時從這支手機第一次打開本章算起
+      if (!ctx.progress.get('startedAt', 0)) ctx.progress.set('startedAt', Date.now());
       app.textContent = '';
       document.body.classList.add('theme-' + (payload.theme || 'default'));
       render(app, payload, ctx);

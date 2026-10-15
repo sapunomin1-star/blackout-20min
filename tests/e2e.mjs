@@ -696,6 +696,7 @@ async function playAccuse(page, base, entry, code) {
   const expected = await judgeAccuse(payload, data.salt, solved[0]);
   const text = await fillAccuse(page, payload, solved[0]);
   check(text.includes('破案') && text.includes(squash(expected.t[0])), `${entry.id} 全對時要破案並顯示真相`);
+  check(/用時：約\d+分鐘/.test(squash(await page.locator('.rating-list').innerText())), `${entry.id} 破案評等要列出用時`);
   if (expected.epilogue) check(text.includes(squash(expected.epilogue[0])), `${entry.id} 終章要有尾聲`);
   await page.waitForTimeout(2200);
   await noHScroll(page, `${entry.id} 結案`);
