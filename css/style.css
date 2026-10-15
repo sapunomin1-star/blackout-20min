@@ -16,7 +16,7 @@
   --paper-edge: #c8b287;
   --ink: #2a1f16;
   --ink-soft: #574634;
-  --ink-faint: #7d6a52;
+  --ink-faint: #725f48;
   --oxblood: #8e2323;
   --oxblood-deep: #681616;
   --brass: #c9a15f;
@@ -81,6 +81,18 @@ select {
 :focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 3px;
+}
+
+/* 紙張上的焦點框改用深紅：淺黃在米色紙上幾乎看不見。
+   卡片標題列的框畫在卡片外的深色背景上，維持淺黃。 */
+.paper :focus-visible,
+.paper .opt:has(input:focus-visible),
+.paper .suspect-option:has(input:focus-visible) {
+  outline-color: var(--oxblood);
+}
+
+.paper > summary:focus-visible {
+  outline-color: var(--focus);
 }
 
 [hidden] {
