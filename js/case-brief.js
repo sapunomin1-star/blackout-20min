@@ -75,8 +75,9 @@
             type: 'button',
             text: '清除本章紀錄',
             onclick: function () {
-              if (window.confirm('清除這支手機上本章的查看、解鎖、出示與提示紀錄？（通行碼會保留）')) {
+              if (window.confirm('清除這支手機上本章的查看、解鎖、出示、提示紀錄與筆記？（通行碼會保留）')) {
                 ctx.progress.reset();
+                Case.forget('notes:' + ctx.chapter);
                 window.location.reload();
               }
             }

@@ -44,7 +44,7 @@
   var reset = document.getElementById('reset-all');
   if (reset) {
     reset.addEventListener('click', function () {
-      if (!window.confirm('清除這支手機上所有章節的通行碼、進度與結案報告，從序章重新開始？')) return;
+      if (!window.confirm('清除這支手機上所有章節的通行碼、進度、筆記與結案報告，從序章重新開始？')) return;
       try {
         Object.keys(window.localStorage)
           .filter(function (k) {

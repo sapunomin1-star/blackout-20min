@@ -634,6 +634,28 @@ async function playInterrogation(page, base, entry, code) {
   return { payload, presents };
 }
 
+// 筆記本：每一章一本、只存在這支手機；用真點擊與鍵盤打開、輸入、收起，重新整理後內容還在
+async function testNotebook(page, entry) {
+  const fab = page.locator('.notebook-fab');
+  const dialog = page.locator('dialog.notebook');
+  const text = page.locator('.notebook-text');
+  const note = `筆記測試 ${entry.id}\nNo.01 #2`;
+  await fab.click();
+  await dialog.waitFor({ state: 'visible' });
+  check((await text.inputValue()) === '', `${entry.id} 筆記本一開始要是空的（每一章一本）`);
+  await narrowNoHScroll(page, `${entry.id} 打開的筆記本`);
+  await text.click();
+  await page.keyboard.type(note);
+  await page.locator('.notebook-close').click();
+  await dialog.waitFor({ state: 'hidden' });
+  await page.reload();
+  await fab.click();
+  await dialog.waitFor({ state: 'visible' });
+  check((await text.inputValue()) === note, `${entry.id} 重新整理後筆記要還在`);
+  await page.keyboard.press('Escape');
+  await dialog.waitFor({ state: 'hidden' });
+}
+
 async function fillAccuse(page, accuse, values) {
   for (const f of accuse.fields) {
     const box = page.locator(`.field[data-field="${f.id}"]`);
@@ -741,10 +763,11 @@ async function testCampaign(browser, ctxOptions, base) {
     const interText = squash(await B.locator('body').innerText());
     check(![...allItems.values()].some(({ item }) => interText.includes(squash(item.desc))), `${entry.id} 偵訊頁出現了物品描述`);
 
+    await testNotebook(A, entry);
     const next = await playAccuse(A, base, entry, code);
     await shot(A, `m-${entry.id}-4-solved`);
     const reacts = presents.filter((x) => x.content.react).length;
-    console.log(`  ✓ ${entry.label}《${entry.title}》：通行碼解鎖、所有鎖與證物、${presents.length - reacts} 次改口${reacts ? `、${reacts} 次反應` : ''}、四種判定與破案都用真點擊跑過`);
+    console.log(`  ✓ ${entry.label}《${entry.title}》：通行碼解鎖、所有鎖與證物、${presents.length - reacts} 次改口${reacts ? `、${reacts} 次反應` : ''}、筆記本、四種判定與破案都用真點擊跑過`);
     code = next;
   }
   check(code === null, '終章破案後不該再有下一章通行碼');

@@ -41,7 +41,7 @@
       el('details', { className: 'paper how-to-present' }, [
         el('summary', null, [el('span', { className: 'recap-head' }, [el('span', { className: 'label', text: '怎麼出示證物' }), el('span', { className: 'chevron', 'aria-hidden': 'true' })])]),
         el('div', { className: 'recap-body' }, [
-          el('p', { text: '請現場調查員念出證物編號，在對的人面前「出示證物」，對方可能會改口，說出新的事。' }),
+          el('p', { text: '請現場調查員念出證物編號，在對的人面前「出示證物」，對方可能會改口，說出新的事。右下角的「筆記」可以把編號和名稱記下來。' }),
           el('p', { text: '有些人要一步一步逼：先拆穿一句，下一句才鬆得動。對方看了證物只露出反應、不肯改口時，不扣信用；等你們拆穿了別的事，也許值得再拿出來試一次。' }),
           el('p', { text: '出示不相干的證物會扣「信用」。信用用光還是可以繼續，但結案評等會變差。' }),
           el('p', { text: '標著「證人」的人只說明自己看到的事；給證人看證物不會扣信用。' })

@@ -186,6 +186,61 @@
     node.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
   }
 
+  /* ---------- 筆記本：只存在這支手機，每一章一本 ---------- */
+
+  var NOTEBOOK_ICON =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6z"/><path d="M6 3v18M4 7h4M4 12h4M4 17h4"/><path d="M10.5 8h4.5M10.5 11.5h4.5"/></svg>';
+
+  function notebook(chapter) {
+    var key = 'notes:' + chapter;
+    var text = el('textarea', {
+      className: 'notebook-text',
+      id: 'notebook-text',
+      spellcheck: 'false',
+      placeholder: '記下搭檔念給你的線索：證物編號、口供編號、時間、誰在哪裡……'
+    });
+    text.value = load(key, '') || '';
+    text.addEventListener('input', function () {
+      save(key, text.value);
+    });
+    var close = el('button', { className: 'notebook-close', type: 'button', text: '收起' });
+    var dialog = el('dialog', { className: 'notebook', 'aria-labelledby': 'notebook-title' }, [
+      el('div', { className: 'notebook-sheet paper' }, [
+        el('div', { className: 'notebook-head' }, [el('h2', { className: 'notebook-title', id: 'notebook-title', text: '筆記本' }), close]),
+        el('p', { className: 'notebook-note' }, [
+          el('span', { className: 'nobr', text: '只存在這支手機，' }),
+          el('span', { className: 'nobr', text: '搭檔看不到；' }),
+          el('span', { className: 'nobr', text: '打字就會自動存好。' })
+        ]),
+        el('label', { className: 'visually-hidden', for: 'notebook-text', text: '筆記內容' }),
+        text
+      ])
+    ]);
+    var fab = el('button', { className: 'notebook-fab', type: 'button', 'aria-haspopup': 'dialog' }, [el('span', { className: 'notebook-icon' }), el('span', { text: '筆記' })]);
+    fab.firstChild.innerHTML = NOTEBOOK_ICON;
+
+    function hide() {
+      if (typeof dialog.close === 'function') dialog.close();
+      else dialog.removeAttribute('open');
+    }
+    fab.addEventListener('click', function () {
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+      close.focus();
+    });
+    close.addEventListener('click', hide);
+    // 點筆記外面的暗處也會收起
+    dialog.addEventListener('click', function (event) {
+      if (event.target === dialog) hide();
+    });
+    dialog.addEventListener('close', function () {
+      fab.focus();
+    });
+    document.body.classList.add('has-notebook');
+    document.body.appendChild(fab);
+    document.body.appendChild(dialog);
+  }
+
   /* ---------- 啟動一頁：檢查環境、解鎖、交給各頁渲染 ---------- */
 
   function showNotice(app, title, body) {
@@ -268,6 +323,8 @@
       app.textContent = '';
       document.body.classList.add('theme-' + (payload.theme || 'default'));
       render(app, payload, ctx);
+      // 現場、偵訊、指控三頁有筆記本（同一支手機共用一本）
+      if (role !== 'brief') notebook(data.chapter);
     };
     var code = storedCode(data.chapter);
     if (!code) {
@@ -300,6 +357,7 @@
     paragraphs: paragraphs,
     prefersReducedMotion: prefersReducedMotion,
     scrollIntoView: scrollIntoView,
+    notebook: notebook,
     boot: boot
   };
 })(window);
