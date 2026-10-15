@@ -253,6 +253,7 @@
         card.appendChild(el('div', { className: 'verdict-text epilogue' }, [Case.paragraphs(truth.epilogue)]));
       }
       card.appendChild(grade.node);
+      card.appendChild(shareBox(grade));
       if (truth.next) {
         card.appendChild(
           el('div', { className: 'next-code' }, [
@@ -283,6 +284,45 @@
       return '約 ' + Math.floor(m / 60) + ' 小時' + (m % 60 ? ' ' + (m % 60) + ' 分' : '');
     }
 
+    // 分享成績：只有章名、星等和數字，不含任何案情。手機有分享選單就用，沒有就複製，再不行就列出文字讓玩家自己選
+    function shareBox(grade) {
+      var text = '《懷錶檔案》' + data.chapter.label + '《' + data.chapter.title + '》破案 ' + grade.stars + '\n' + grade.summary + '\n' + new URL('../', window.location.href).href;
+      var status = el('div', { className: 'share-status', role: 'status' });
+      var button = el('button', { className: 'btn btn-ghost btn-block share-button', type: 'button', text: '分享成績' });
+
+      function manual() {
+        var box = el('textarea', { className: 'share-text', readonly: true, rows: '4', 'aria-label': '成績文字' });
+        box.value = text;
+        status.textContent = '';
+        status.appendChild(el('p', { text: '這支手機不能自動複製，請長按下面的文字自己複製：' }));
+        status.appendChild(box);
+        box.select();
+      }
+
+      function copy() {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () {
+            status.textContent = '已複製成績，可以貼給搭檔或朋友。';
+          }, manual);
+        } else {
+          manual();
+        }
+      }
+
+      button.addEventListener('click', function () {
+        status.textContent = '';
+        if (navigator.share) {
+          navigator.share({ text: text }).catch(function (err) {
+            // 玩家自己取消分享就不用再做什麼
+            if (!err || err.name !== 'AbortError') copy();
+          });
+        } else {
+          copy();
+        }
+      });
+      return el('div', { className: 'share' }, [button, status]);
+    }
+
     function rating() {
       var attempts = progress.get('attempts', 1);
       var hints = progress.get('hints', {});
@@ -301,9 +341,16 @@
       if (credibility !== null) rows.push(el('li', { text: '剩下的信用：' + credibility }));
       var minutes = elapsedMinutes();
       if (minutes !== null) rows.push(el('li', { text: '用時：' + formatMinutes(minutes) }));
+      // 分享用的一行摘要：只有數字，沒有案情
+      var summary = (minutes !== null ? ['用時' + formatMinutes(minutes)] : [])
+        .concat(['提示 ' + hintCount + ' 層', '指控 ' + attempts + ' 次'])
+        .concat(credibility !== null ? ['信用剩 ' + credibility] : [])
+        .join('・');
       return {
         score: score,
         minutes: minutes,
+        stars: stars,
+        summary: summary,
         node: el('div', { className: 'rating' }, [
           el('p', { className: 'label', text: '破案評等（這支手機的紀錄）' }),
           el('p', { className: 'rating-stars', 'aria-label': score + ' 顆星', text: stars }),
